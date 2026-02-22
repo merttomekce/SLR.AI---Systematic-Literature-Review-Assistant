@@ -14,10 +14,11 @@ import {
   Play,
   Pause,
   HelpCircle,
+  Loader2,
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { useReviewStore, Paper, Decision } from '@/store/useReviewStore';
-import { processStep1 } from '@/lib/llmClient';
 
 const filters = ['All', 'INCLUDED', 'EXCLUDED', 'NOT ACCESSIBLE', 'PENDING', 'ANALYZING'];
 
@@ -29,12 +30,9 @@ export default function ScreeningPage() {
 
   const [activeFilter, setActiveFilter] = useState('All');
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [isRunning, setIsRunning] = useState(false);
-
-  const isRunningRef = useRef(isRunning);
-  useEffect(() => {
-    isRunningRef.current = isRunning;
-  }, [isRunning]);
+  const isRunning = useReviewStore((state) => state.isS1Running);
+  const pauseTimeLeft = useReviewStore((state) => state.s1PauseTimeLeft);
+  const toggleS1ProcessingLoop = useReviewStore((state) => state.toggleS1ProcessingLoop);
 
   useEffect(() => {
     // If we land here and no S1 run exists, but we have base papers, start one
@@ -58,63 +56,17 @@ export default function ScreeningPage() {
     updatePaperInCurrentRun(currentPaper.id, { s1Decision: decision });
   };
 
-  const toggleProcessing = async () => {
+  // Automatically sync visual highlight to the paper currently being analyzed in the background
+  useEffect(() => {
     if (isRunning) {
-      setIsRunning(false); // Ref takes care of stopping loop
-    } else {
-      setIsRunning(true);
-      runProcessingLoop();
-    }
-  };
-
-  const runProcessingLoop = async () => {
-    // We fetch the latest papers state dynamically inside the loop
-    while (isRunningRef.current) {
-      // Find the next pending paper
-      const state = useReviewStore.getState();
-      const currentRun = state.currentS1Run;
-      if (!currentRun) break;
-
-      const allPapers = Object.values(currentRun.papers);
-      const nextPaper = allPapers.find(p => p.s1Decision === 'PENDING');
-
-      if (!nextPaper) {
-        setIsRunning(false);
-        break; // All done!
+      const analyzingIdx = filteredPapers.findIndex(p => p.s1Decision === 'ANALYZING');
+      if (analyzingIdx !== -1 && analyzingIdx !== currentIndex) {
+        setCurrentIndex(analyzingIdx);
       }
-
-      // Mark as analyzing
-      state.updatePaperInCurrentRun(nextPaper.id, { s1Decision: 'ANALYZING' });
-
-      try {
-        const result = await processStep1(
-          nextPaper,
-          { apiKey: state.apiKey, provider: state.provider, model: state.model },
-          {
-            topic: state.topic,
-            inclusionCriteria: state.inclusionCriteria,
-            exclusionCriteria: state.exclusionCriteria,
-            extraContext: state.extraContext
-          }
-        );
-        state.updatePaperInCurrentRun(nextPaper.id, {
-          s1Decision: result.decision,
-          s1Reason: result.reason,
-          s1Confidence: result.confidence
-        });
-      } catch (err) {
-        console.error("Error processing paper:", nextPaper.id, err);
-        // Put back to pending if API failed, but pause queue
-        state.updatePaperInCurrentRun(nextPaper.id, { s1Decision: 'PENDING' });
-        setIsRunning(false);
-        alert("API Error: Processing paused. See console.");
-        break;
-      }
-
-      // Small artificial delay to avoid hammering APIs too aggressively without rate limits
-      await new Promise(r => setTimeout(r, 500));
     }
-  };
+  }, [filteredPapers, isRunning, currentIndex]);
+
+
 
   const stats = currentS1Run?.stats || { total: 0, included: 0, excluded: 0, notAccessible: 0 };
   const pending = papers.filter(p => !p.s1Decision || p.s1Decision === 'PENDING' || p.s1Decision === 'ANALYZING').length;
@@ -139,7 +91,7 @@ export default function ScreeningPage() {
   return (
     <LayoutWrapper
       headerTitle="Abstract Screening (Step 1)"
-      headerDescription={currentS1Run ? `Run: \${currentS1Run.name} (\${currentS1Run.model})` : "Review and classify papers based on inclusion criteria"}
+      headerDescription={currentS1Run ? `Run: ${currentS1Run.name} (${currentS1Run.model})` : "Review and classify papers based on inclusion criteria"}
     >
       <div className="p-6 space-y-6 animate-in fade-in duration-500">
 
@@ -147,13 +99,14 @@ export default function ScreeningPage() {
         <div className="flex items-center justify-between pb-4 border-b border-border">
           <div className="flex items-center gap-4">
             <Button
-              onClick={toggleProcessing}
-              className={`gap-2 shadow-md transition-smooth \${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+              onClick={toggleS1ProcessingLoop}
+              disabled={pauseTimeLeft > 0}
+              className={`gap-2 shadow-md transition-smooth ${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
             >
-              {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-              {isRunning ? 'Pause AI Screening' : 'Start AI Screening'}
+              {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
+              {pauseTimeLeft > 0 ? `Rate Limit Paused (${pauseTimeLeft}s)` : (isRunning ? 'Pause AI Screening' : 'Start AI Screening')}
             </Button>
-            {isRunning && (
+            {isRunning && pauseTimeLeft === 0 && (
               <span className="text-sm font-medium text-amber-600 dark:text-amber-400 flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full border-2 border-amber-500 border-t-transparent animate-spin" />
                 AI is analyzing...
@@ -204,8 +157,8 @@ export default function ScreeningPage() {
                       setCurrentIndex(0);
                     }}
                     className={`text-left px-3 py-1.5 rounded-md text-xs font-medium transition-smooth border ${activeFilter === filter
-                        ? 'bg-primary text-primary-foreground border-primary shadow-sm'
-                        : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                      : 'bg-muted/50 text-muted-foreground border-border hover:bg-muted hover:text-foreground'
                       }`}
                   >
                     {filter}

@@ -18,30 +18,33 @@ export async function parseExcelFile(file: File): Promise<Paper[]> {
     const rawData = XLSX.utils.sheet_to_json(worksheet, { defval: '' }) as Record<string, any>[];
 
     return rawData.map(row => {
-        // Attempt to generically map columns (case-insensitive)
-        const getVal = (possibleKeys: string[]) => {
+        // Attempt to generically map columns using Regex for maximum flexibility
+        const getValByRegex = (patterns: RegExp[]) => {
             for (const k of Object.keys(row)) {
-                if (possibleKeys.includes(k.toLowerCase().trim())) {
-                    return String(row[k]);
+                const header = k.toLowerCase().trim();
+                for (const pattern of patterns) {
+                    if (pattern.test(header)) {
+                        return String(row[k]);
+                    }
                 }
             }
             return undefined;
         };
 
-        const title = getVal(['title', 'article title', 'name']) || 'Untitled Paper';
-        const doi = getVal(['doi', 'digital object identifier']) || '';
+        const title = getValByRegex([/title/, /name/]) || 'Untitled Paper';
+        const doi = getValByRegex([/doi/, /digital object identifier/]) || '';
 
         return {
             id: doi || crypto.randomUUID(), // Priority to DOI as ID, else uuid
             title,
-            author: getVal(['author', 'authors', 'creator']),
-            year: getVal(['year', 'publication year', 'date']),
-            abstract: getVal(['abstract', 'summary']),
+            author: getValByRegex([/author/, /creator/]),
+            year: getValByRegex([/year/, /date/, /published/]),
+            abstract: getValByRegex([/abstract/, /abstract note/, /summary/, /description/, /synopsis/]),
             doi,
-            journal: getVal(['journal', 'publication', 'source']),
-            url: getVal(['url', 'link']),
-            issn: getVal(['issn']),
-            itemType: getVal(['item type', 'type', 'document type']),
+            journal: getValByRegex([/journal/, /publication/, /source/, /venue/]),
+            url: getValByRegex([/url/, /link/]),
+            issn: getValByRegex([/issn/]),
+            itemType: getValByRegex([/type/]),
         };
     });
 }

@@ -15,13 +15,14 @@ import {
   MessageSquare,
   Book,
   Settings,
-  AlertCircle,
   Upload,
   Play,
   Pause,
-  Download
+  Download,
+  Loader2
 } from 'lucide-react';
 import Link from 'next/link';
+import { toast } from 'sonner';
 import { useReviewStore, Paper, Decision } from '@/store/useReviewStore';
 import { extractTextFromPDF, matchFileToPaper, exportToExcel } from '@/lib/fileParser';
 import { processStep2 } from '@/lib/llmClient';
@@ -32,10 +33,10 @@ export default function FullTextReviewPage() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [activeTab, setActiveTab] = useState('extraction');
 
-  // Local state to store parsed pdf text for each paper to avoid re-parsing on every run
   const [pdfTexts, setPdfTexts] = useState<Record<string, string>>({});
   const [isParsingFiles, setIsParsingFiles] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
+  const [pauseTimeLeft, setPauseTimeLeft] = useState(0);
 
   const isRunningRef = useRef(isRunning);
   isRunningRef.current = isRunning;
@@ -66,7 +67,9 @@ export default function FullTextReviewPage() {
       setPdfTexts(newTexts);
     } catch (err) {
       console.error("PDF Parsing Error", err);
-      alert("Failed to parse some PDFs.");
+      toast.error("Parsing Failed", {
+        description: "Failed to parse some of the uploaded PDFs. Ensure they are valid text-searchable PDFs."
+      });
     } finally {
       setIsParsingFiles(false);
     }
@@ -76,6 +79,13 @@ export default function FullTextReviewPage() {
     if (isRunning) {
       setIsRunning(false);
     } else {
+      if (!apiKey || !provider || !model) {
+        toast.error("API Key Missing", {
+          id: "api-key-missing-toast",
+          description: "Please return to the Setup page and configure your API Key and Model before starting Full-Text Extraction."
+        });
+        return;
+      }
       setIsRunning(true);
       runProcessingLoop();
     }
@@ -111,15 +121,42 @@ export default function FullTextReviewPage() {
           s2Status: 'DONE',
           extractedData: result.extractedData
         });
-      } catch (err) {
+      } catch (err: any) {
         console.error("Step 2 error for", nextPaper.id, err);
+
+        if (err.name === 'QuotaError') {
+          state.updatePaperInS2Run(nextPaper.id, { s2Status: 'PENDING' });
+          setIsRunning(false);
+          toast.error("Daily Quota Reached", {
+            id: "quota-error-toast",
+            description: "The process has been paused because your API key's daily limit or billing credits cannot handle the remaining files."
+          });
+          break;
+        }
+
+        if (err.name === 'RateLimitError') {
+          const waitSeconds = err.retryAfterSeconds || 60;
+          state.updatePaperInS2Run(nextPaper.id, { s2Status: 'PENDING' });
+
+          console.log(`Rate limit hit, pausing Full-Text extraction for ${waitSeconds} seconds...`);
+
+          for (let i = waitSeconds; i > 0; i--) {
+            if (!isRunningRef.current) break;
+            setPauseTimeLeft(i);
+            await new Promise(r => setTimeout(r, 1000));
+          }
+          setPauseTimeLeft(0);
+          continue;
+        }
+
         state.updatePaperInS2Run(nextPaper.id, { s2Status: 'ERROR' });
         setIsRunning(false);
-        alert("API Error: Processing paused.");
+        toast.error("API Error", {
+          id: "api-error-toast",
+          description: `${err.message || 'Unknown error'}. Processing paused.`
+        });
         break;
       }
-
-      await new Promise(r => setTimeout(r, 1000)); // slightly larger delay for bigger context
     }
   };
 
@@ -130,7 +167,7 @@ export default function FullTextReviewPage() {
         acc[`Extracted_\${k}`] = Array.isArray(v) ? v.join('; ') : String(v);
         return acc;
       }, {} as Record<string, string>) : {};
-      
+
       return {
         ID: p.id,
         Title: p.title,
@@ -171,7 +208,7 @@ export default function FullTextReviewPage() {
 
         {/* Controls Bar */}
         <div className="flex flex-col sm:flex-row gap-4 items-center justify-between pb-4 border-b border-border">
-          
+
           <div className="flex gap-4 items-center w-full sm:w-auto">
             <label className="cursor-pointer">
               <input
@@ -191,14 +228,14 @@ export default function FullTextReviewPage() {
           </div>
 
           <div className="flex items-center gap-4">
-             <Button
-                onClick={toggleProcessing}
-                disabled={!currentS2Run || isParsingFiles || pdfsLoaded === 0}
-                className={`gap-2 shadow-md transition-smooth \${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
-              >
-                {isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
-                {isRunning ? 'Pause Extraction' : 'Start Full-Text Extraction'}
-              </Button>
+            <Button
+              onClick={toggleProcessing}
+              disabled={!currentS2Run || isParsingFiles || pdfsLoaded === 0 || pauseTimeLeft > 0}
+              className={`gap-2 shadow-md transition-smooth ${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+            >
+              {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
+              {pauseTimeLeft > 0 ? `Rate Limit Paused (${pauseTimeLeft}s)` : (isRunning ? 'Pause Extraction' : 'Start Full-Text Extraction')}
+            </Button>
           </div>
         </div>
 
@@ -226,7 +263,7 @@ export default function FullTextReviewPage() {
                     }`}
                   >
                     {pdfTexts[paper.id] && (
-                       <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500" title="PDF Loaded" />
+                      <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500" title="PDF Loaded" />
                     )}
                     <p className="text-xs font-medium text-foreground line-clamp-2 pr-4">
                       {paper.title}
@@ -269,13 +306,13 @@ export default function FullTextReviewPage() {
               {/* Status Banner */}
               {currentPaper.s2Status === 'DONE' && (
                 <div className={`px-6 py-3 border-b border-border flex flex-col gap-1 \${currentPaper.s2Decision === 'INCLUDED' ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
-                   <div className="flex items-center gap-2 font-semibold">
-                     {currentPaper.s2Decision === 'INCLUDED' ? <CheckCircle2 className="w-5 h-5 text-green-600"/> : <XCircle className="w-5 h-5 text-red-600"/>}
-                     <span className={currentPaper.s2Decision === 'INCLUDED' ? 'text-green-600' : 'text-red-600'}>
-                       Final Decision: {currentPaper.s2Decision}
-                     </span>
-                   </div>
-                   {currentPaper.s2Reason && <p className="text-sm text-foreground/80 mt-1">{currentPaper.s2Reason}</p>}
+                  <div className="flex items-center gap-2 font-semibold">
+                    {currentPaper.s2Decision === 'INCLUDED' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
+                    <span className={currentPaper.s2Decision === 'INCLUDED' ? 'text-green-600' : 'text-red-600'}>
+                      Final Decision: {currentPaper.s2Decision}
+                    </span>
+                  </div>
+                  {currentPaper.s2Reason && <p className="text-sm text-foreground/80 mt-1">{currentPaper.s2Reason}</p>}
                 </div>
               )}
 
@@ -296,27 +333,27 @@ export default function FullTextReviewPage() {
                   {/* Data Extraction Tab */}
                   <TabsContent value="extraction" className="space-y-4 mt-4">
                     {currentPaper.s2Status === 'REVIEWING' ? (
-                       <div className="p-12 flex flex-col items-center justify-center text-primary">
-                          <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
-                          <p className="font-medium animate-pulse">AI is reading full text...</p>
-                       </div>
+                      <div className="p-12 flex flex-col items-center justify-center text-primary">
+                        <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
+                        <p className="font-medium animate-pulse">AI is reading full text...</p>
+                      </div>
                     ) : currentPaper.extractedData && Object.keys(currentPaper.extractedData).length > 0 ? (
                       <div className="space-y-4">
                         {Object.entries(currentPaper.extractedData).map(([key, value]) => (
-                           <div key={key} className="space-y-1 bg-muted/30 p-4 rounded-lg border border-border">
-                             <p className="text-sm font-semibold text-foreground capitalize">
-                               {key.replace(/([A-Z])/g, ' $1').trim()}
-                             </p>
-                             <div className="text-sm text-foreground/80 break-words">
-                               {Array.isArray(value) ? (
-                                 <ul className="list-disc pl-5 mt-2 space-y-1">
-                                   {value.map((v, i) => <li key={i}>{v}</li>)}
-                                 </ul>
-                               ) : (
-                                 String(value)
-                               )}
-                             </div>
-                           </div>
+                          <div key={key} className="space-y-1 bg-muted/30 p-4 rounded-lg border border-border">
+                            <p className="text-sm font-semibold text-foreground capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}
+                            </p>
+                            <div className="text-sm text-foreground/80 break-words">
+                              {Array.isArray(value) ? (
+                                <ul className="list-disc pl-5 mt-2 space-y-1">
+                                  {value.map((v, i) => <li key={i}>{v}</li>)}
+                                </ul>
+                              ) : (
+                                String(value)
+                              )}
+                            </div>
+                          </div>
                         ))}
                       </div>
                     ) : (
@@ -331,12 +368,12 @@ export default function FullTextReviewPage() {
                   {/* PDF Text Tab */}
                   <TabsContent value="pdftext" className="space-y-4 mt-4">
                     {pdfTexts[currentPaper.id] ? (
-                       <div className="w-full max-h-96 overflow-y-auto p-4 rounded-md bg-input border border-border text-xs font-mono text-muted-foreground whitespace-pre-wrap">
-                          {pdfTexts[currentPaper.id].substring(0, 5000)}
-                          {pdfTexts[currentPaper.id].length > 5000 && <div className="mt-4 pt-4 border-t border-border text-center text-primary">--- Text Truncated in UI (Full text is used in AI) ---</div>}
-                       </div>
+                      <div className="w-full max-h-96 overflow-y-auto p-4 rounded-md bg-input border border-border text-xs font-mono text-muted-foreground whitespace-pre-wrap">
+                        {pdfTexts[currentPaper.id].substring(0, 5000)}
+                        {pdfTexts[currentPaper.id].length > 5000 && <div className="mt-4 pt-4 border-t border-border text-center text-primary">--- Text Truncated in UI (Full text is used in AI) ---</div>}
+                      </div>
                     ) : (
-                       <div className="p-8 rounded-lg bg-secondary/50 text-center border border-dashed border-border mb-4">
+                      <div className="p-8 rounded-lg bg-secondary/50 text-center border border-dashed border-border mb-4">
                         <p className="text-sm text-muted-foreground mb-2">
                           No PDF loaded for this paper. Upload PDFs above.
                         </p>
@@ -390,11 +427,11 @@ export default function FullTextReviewPage() {
             </Button>
           </Link>
           <div className="flex gap-2">
-            <Button 
-                onClick={handleExportFinal}
-                disabled={!currentS2Run}
-                className="gap-2 bg-green-600 text-white hover:bg-green-700 shadow-md"
-              >
+            <Button
+              onClick={handleExportFinal}
+              disabled={!currentS2Run}
+              className="gap-2 bg-green-600 text-white hover:bg-green-700 shadow-md"
+            >
               <Download className="w-4 h-4" />
               Export Final Excel
             </Button>

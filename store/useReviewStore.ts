@@ -1,4 +1,6 @@
 import { create } from 'zustand';
+import { processStep1 } from '@/lib/llmClient';
+import { toast } from 'sonner';
 
 export type Decision = 'INCLUDED' | 'EXCLUDED' | 'NOT ACCESSIBLE' | 'PENDING' | 'ANALYZING';
 
@@ -61,8 +63,13 @@ interface ReviewState {
   currentS1Run: ReviewRun | null;
   savedS1Runs: ReviewRun[];
 
+  // Extraction Runs
   currentS2Run: ReviewRun | null;
   savedS2Runs: ReviewRun[];
+
+  // Global Runner States
+  isS1Running: boolean;
+  s1PauseTimeLeft: number;
 
   // Dynamic Models
   availableModels: string[];
@@ -80,6 +87,8 @@ interface ReviewState {
   updatePaperInCurrentRun: (paperId: string, update: Partial<Paper>) => void;
   saveCurrentS1Run: () => void;
   deleteS1Run: (runId: string) => void;
+
+  toggleS1ProcessingLoop: () => void;
 
   startS2Run: (fromS1RunId: string) => void;
   updatePaperInS2Run: (paperId: string, update: Partial<Paper>) => void;
@@ -107,6 +116,9 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
 
   currentS2Run: null,
   savedS2Runs: [],
+
+  isS1Running: false,
+  s1PauseTimeLeft: 0,
 
   availableModels: [],
   isFetchingModels: false,
@@ -170,6 +182,98 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
   deleteS1Run: (runId) => set((state) => ({
     savedS1Runs: state.savedS1Runs.filter(r => r.id !== runId)
   })),
+
+  toggleS1ProcessingLoop: async () => {
+    const state = get();
+    if (state.isS1Running) {
+      set({ isS1Running: false });
+      return;
+    }
+
+    if (!state.currentS1Run || Object.keys(state.currentS1Run.papers).length === 0) {
+      toast.warning("No Papers to Screen", { description: "Please upload an Excel file containing papers in the Setup page first." });
+      return;
+    }
+
+    if (!state.apiKey || !state.provider || !state.model) {
+      toast.error("API Key Missing", { id: "api-key-missing-toast", description: "Please return to the Setup page and configure your API Key and Model before starting the AI screening." });
+      return;
+    }
+
+    set({ isS1Running: true });
+
+    // Background loop detached from components
+    while (get().isS1Running) {
+      const currentState = get();
+      const currentRun = currentState.currentS1Run;
+      if (!currentRun) break;
+
+      const allPapers = Object.values(currentRun.papers);
+      let nextPaper = allPapers.find(p => p.s1Decision === 'PENDING');
+
+      // If there are no pending papers, check if there are any that got stuck as 'ANALYZING'
+      if (!nextPaper) {
+        nextPaper = allPapers.find(p => p.s1Decision === 'ANALYZING');
+      }
+
+      if (!nextPaper) {
+        set({ isS1Running: false });
+        toast.success("Screening Complete!", { description: "All papers have been classified." });
+        break;
+      }
+
+      currentState.updatePaperInCurrentRun(nextPaper.id, { s1Decision: 'ANALYZING' });
+
+      try {
+        const result = await processStep1(
+          nextPaper,
+          { apiKey: currentState.apiKey, provider: currentState.provider, model: currentState.model },
+          {
+            topic: currentState.topic,
+            inclusionCriteria: currentState.inclusionCriteria,
+            exclusionCriteria: currentState.exclusionCriteria,
+            extraContext: currentState.extraContext
+          }
+        );
+        get().updatePaperInCurrentRun(nextPaper.id, {
+          s1Decision: result.decision,
+          s1Reason: result.reason,
+          s1Confidence: result.confidence
+        });
+
+      } catch (err: any) {
+        console.error("Error processing paper:", nextPaper.id, err);
+
+        if (err.name === 'QuotaError') {
+          get().updatePaperInCurrentRun(nextPaper.id, { s1Decision: 'PENDING' });
+          set({ isS1Running: false });
+          toast.error("Daily Quota Reached", { id: "quota-error-toast", description: "The process has been paused because your API key lacks sufficient limits." });
+          break;
+        }
+
+        if (err.name === 'RateLimitError') {
+          const waitSeconds = err.retryAfterSeconds || 60;
+          get().updatePaperInCurrentRun(nextPaper.id, { s1Decision: 'PENDING' });
+
+          for (let i = waitSeconds; i > 0; i--) {
+            if (!get().isS1Running) {
+              set({ s1PauseTimeLeft: 0 });
+              break;
+            }
+            set({ s1PauseTimeLeft: i });
+            await new Promise(r => setTimeout(r, 1000));
+          }
+          set({ s1PauseTimeLeft: 0 });
+          continue;
+        }
+
+        get().updatePaperInCurrentRun(nextPaper.id, { s1Decision: 'PENDING' });
+        set({ isS1Running: false });
+        toast.error("API Error", { id: "api-error-toast", description: `${err.message || 'Unknown error'}. Processing paused.` });
+        break;
+      }
+    }
+  },
 
   startS2Run: (fromS1RunId) => set((state) => {
     const parentRun = state.savedS1Runs.find(r => r.id === fromS1RunId) || state.currentS1Run;

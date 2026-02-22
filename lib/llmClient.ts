@@ -1,5 +1,21 @@
 import { Paper, ReviewRun } from '@/store/useReviewStore';
 
+export class RateLimitError extends Error {
+    public retryAfterSeconds: number;
+    constructor(retryAfterSeconds: number = 60) {
+        super(`Rate limit exceeded. Try again in ${retryAfterSeconds} seconds.`);
+        this.name = 'RateLimitError';
+        this.retryAfterSeconds = retryAfterSeconds;
+    }
+}
+
+export class QuotaError extends Error {
+    constructor() {
+        super(`Daily quota reached or out of credits.`);
+        this.name = 'QuotaError';
+    }
+}
+
 export interface LLMRequest {
     provider: string; // 'anthropic' | 'openai' | 'google'
     model: string;
@@ -41,6 +57,27 @@ async function callAnthropic(req: LLMRequest): Promise<string> {
     });
 
     if (!response.ok) {
+        if (response.status === 402) {
+            throw new QuotaError();
+        }
+        if (response.status === 429) {
+            // Anthropic headers: anthropic-ratelimit-reset (timestamp) or retry-after (seconds)
+            const resetHeader = response.headers.get('anthropic-ratelimit-reset');
+            const retryHeader = response.headers.get('retry-after');
+            let waitSeconds = 60;
+
+            if (retryHeader) {
+                waitSeconds = parseInt(retryHeader, 10);
+            } else if (resetHeader) {
+                const resetTime = new Date(resetHeader).getTime();
+                waitSeconds = Math.max(1, Math.ceil((resetTime - Date.now()) / 1000));
+            }
+
+            // If wait is suspiciously long (> 1 hour), assume it's a daily/monthly hard cap
+            if (waitSeconds > 3600) throw new QuotaError();
+            throw new RateLimitError(waitSeconds);
+        }
+
         const errorText = await response.text();
         throw new Error(`Anthropic Error: ${response.status} ${errorText}`);
     }
@@ -70,6 +107,25 @@ async function callOpenAI(req: LLMRequest): Promise<string> {
     });
 
     if (!response.ok) {
+        if (response.status === 402) {
+            throw new QuotaError();
+        }
+        if (response.status === 429) {
+            const resetRequests = response.headers.get('x-ratelimit-reset-requests');
+            const retryAfter = response.headers.get('retry-after');
+            let waitSeconds = 60;
+
+            if (resetRequests) {
+                // e.g. "12s" or "6m0s" - usually retry-after is safer for 429s, but fallback parsing
+                waitSeconds = parseFloat(resetRequests) || 60;
+            }
+            if (retryAfter) {
+                waitSeconds = parseInt(retryAfter, 10);
+            }
+
+            if (waitSeconds > 3600) throw new QuotaError();
+            throw new RateLimitError(waitSeconds);
+        }
         const errorText = await response.text();
         throw new Error(`OpenAI Error: ${response.status} ${errorText}`);
     }
@@ -101,6 +157,21 @@ async function callGoogle(req: LLMRequest): Promise<string> {
     });
 
     if (!response.ok) {
+        if (response.status === 402) {
+            throw new QuotaError();
+        }
+        if (response.status === 429) {
+            const retryAfter = response.headers.get('retry-after');
+            let waitSeconds = 60; // Google often doesn't guarantee headers, default to 60s
+
+            if (retryAfter) {
+                waitSeconds = parseInt(retryAfter, 10);
+            }
+
+            if (waitSeconds > 3600) throw new QuotaError();
+            throw new RateLimitError(waitSeconds);
+        }
+
         const errorText = await response.text();
         throw new Error(`Google API Error: ${response.status} ${errorText}`);
     }

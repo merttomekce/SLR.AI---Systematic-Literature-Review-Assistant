@@ -1,0 +1,1609 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SLR·AI — Systematic Literature Review Assistant</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<style>
+/* ── TOKENS ── */
+:root{
+  --bg:#eef0f7;--surf:#fff;--surf2:#f2f4fb;--surf3:#e6eaf6;
+  --bdr:#cdd5e8;--bdr2:#a8b4d0;
+  --blue:#1a6eff;--blue-d:rgba(26,110,255,.09);
+  --violet:#6d28d9;--violet-d:rgba(109,40,217,.09);
+  --green:#047857;--green-d:rgba(4,120,87,.10);
+  --red:#b91c1c;--red-d:rgba(185,28,28,.09);
+  --amber:#b45309;--amber-d:rgba(180,83,9,.10);
+  --ink:#0d1526;--ink2:#2d3a52;--ink3:#5a6a85;--ink4:#8da0bc;
+  --mono:'IBM Plex Mono',monospace;
+  --sans:'IBM Plex Sans',sans-serif;
+  --disp:'Syne',sans-serif;
+  --sh:0 1px 3px rgba(0,0,0,.09),0 0 0 1px rgba(0,0,0,.04);
+  --sh2:0 4px 20px rgba(0,0,0,.11),0 1px 4px rgba(0,0,0,.06);
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{height:100%;}
+body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:14px;font-weight:400;}
+
+/* ── HEADER ── */
+header{
+  position:sticky;top:0;z-index:200;height:54px;padding:0 20px;
+  display:flex;align-items:center;background:#fff;
+  border-bottom:1px solid var(--bdr);box-shadow:0 1px 6px rgba(0,0,0,.06);
+}
+.logo{display:flex;align-items:center;gap:9px;flex-shrink:0;margin-right:16px;}
+.logo-box{
+  width:30px;height:30px;background:var(--blue);border-radius:7px;
+  display:flex;align-items:center;justify-content:center;
+  font-family:var(--mono);font-size:10px;font-weight:600;color:#fff;
+}
+.logo-name{font-family:var(--disp);font-size:18px;font-weight:800;color:var(--ink);letter-spacing:-.3px;}
+.logo-name em{color:var(--blue);font-style:normal;}
+.sep{width:1px;height:22px;background:var(--bdr);margin-right:14px;flex-shrink:0;}
+.pipe{display:flex;align-items:stretch;height:54px;}
+.ps{
+  display:flex;align-items:center;gap:8px;padding:0 16px;
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;
+  color:var(--ink3);cursor:pointer;border-bottom:2.5px solid transparent;
+  transition:all .15s;white-space:nowrap;user-select:none;
+}
+.ps:hover:not(.locked){color:var(--blue);background:var(--blue-d);}
+.ps.active{color:var(--blue);border-bottom-color:var(--blue);background:var(--blue-d);}
+.ps.done{color:var(--green);border-bottom-color:var(--green);}
+.ps.locked{opacity:.35;cursor:not-allowed;pointer-events:none;}
+.ps.cmp{color:var(--violet);}
+.ps.cmp.active{border-bottom-color:var(--violet);background:var(--violet-d);}
+.ps.cmp.done{color:var(--violet);border-bottom-color:var(--violet);}
+.ps-n{
+  width:20px;height:20px;border-radius:50%;border:1.5px solid currentColor;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;font-weight:700;transition:all .15s;flex-shrink:0;
+}
+.ps.active .ps-n,.ps.done .ps-n{background:currentColor;color:#fff;}
+.ps-arr{color:var(--bdr2);font-size:14px;display:flex;align-items:center;padding:0 2px;}
+.hdr-r{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.vtag{
+  font-family:var(--mono);font-size:9px;font-weight:600;
+  color:var(--blue);background:var(--blue-d);
+  border:1px solid rgba(26,110,255,.25);padding:3px 9px;border-radius:4px;letter-spacing:.08em;
+}
+
+/* ── LAYOUT ── */
+.app{display:flex;height:calc(100vh - 54px);overflow:hidden;}
+
+/* ── SIDEBAR ── */
+.sb{
+  width:332px;flex-shrink:0;background:#fff;border-right:1px solid var(--bdr);
+  overflow-y:auto;padding:18px 16px 40px;
+  scrollbar-width:thin;scrollbar-color:var(--bdr) transparent;
+}
+.sb::-webkit-scrollbar{width:4px;}
+.sb::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:2px;}
+.sb-sec{display:none;}
+.sb-sec.on{display:block;}
+.sb-title{font-family:var(--disp);font-size:15px;font-weight:800;color:var(--ink);margin-bottom:4px;}
+.sb-desc{font-size:12px;color:var(--ink3);line-height:1.7;margin-bottom:16px;}
+.fg{margin-bottom:14px;}
+.fl{
+  font-family:var(--mono);font-size:10px;font-weight:600;
+  letter-spacing:.08em;text-transform:uppercase;color:var(--ink2);
+  margin-bottom:6px;display:flex;align-items:center;gap:6px;
+}
+.fl .bn{
+  width:16px;height:16px;background:var(--blue);border-radius:3px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:9px;color:#fff;font-weight:700;flex-shrink:0;
+}
+.fl .opt{
+  font-size:9px;color:var(--ink4);border:1px solid var(--bdr);
+  border-radius:3px;padding:1px 6px;margin-left:auto;font-weight:400;
+}
+textarea,input[type=text],input[type=password],select{
+  width:100%;background:#fff;border:1.5px solid var(--bdr);border-radius:7px;
+  color:var(--ink);font-family:var(--sans);font-size:13px;font-weight:400;
+  padding:9px 11px;outline:none;line-height:1.6;
+  transition:border-color .15s,box-shadow .15s;
+}
+textarea{resize:vertical;min-height:64px;}
+textarea:focus,input:focus,select:focus{
+  border-color:var(--blue);box-shadow:0 0 0 3px rgba(26,110,255,.10);
+}
+textarea::placeholder,input::placeholder{color:var(--ink4);}
+select{cursor:pointer;font-family:var(--mono);font-size:12px;}
+.api-blk{background:var(--surf2);border:1px solid var(--bdr);border-radius:9px;padding:12px;margin-bottom:14px;}
+.api-row{display:flex;gap:6px;align-items:center;margin-bottom:7px;}
+.api-row:last-child{margin-bottom:0;}
+.api-row label{font-family:var(--mono);font-size:11px;font-weight:500;color:var(--ink3);width:64px;flex-shrink:0;}
+.api-row select,.api-row input{flex:1;padding:6px 9px;font-size:12px;}
+.uz{
+  border:1.5px dashed var(--bdr2);border-radius:8px;padding:14px;
+  text-align:center;cursor:pointer;background:var(--surf2);
+  position:relative;overflow:hidden;transition:all .15s;
+}
+.uz:hover,.uz.drag{border-color:var(--blue);background:var(--blue-d);}
+.uz input[type=file]{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%;}
+.uz-icon{font-size:20px;margin-bottom:5px;display:block;}
+.uz-txt{font-family:var(--mono);font-size:10px;color:var(--ink3);}
+.uz-txt strong{color:var(--blue);}
+.chips{margin-top:6px;display:flex;flex-direction:column;gap:3px;}
+.chip{
+  background:#fff;border:1px solid var(--bdr);border-radius:5px;
+  padding:5px 9px;font-family:var(--mono);font-size:10px;
+  color:var(--green);display:flex;align-items:center;gap:6px;
+}
+.chip .cn{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.chip button{background:none;border:none;cursor:pointer;color:var(--ink4);font-size:13px;line-height:1;transition:color .14s;padding:0;}
+.chip button:hover{color:var(--red);}
+.div{display:flex;align-items:center;gap:7px;margin:14px 0;}
+.div-l{flex:1;height:1px;background:var(--bdr);}
+.div-t{font-family:var(--mono);font-size:8px;letter-spacing:.12em;color:var(--ink4);text-transform:uppercase;}
+.btn-p{
+  width:100%;padding:11px 16px;background:var(--blue);border:none;border-radius:8px;
+  color:#fff;font-family:var(--disp);font-size:13px;font-weight:700;cursor:pointer;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:0 2px 8px rgba(26,110,255,.28);margin-bottom:8px;transition:all .15s;
+}
+.btn-p:hover:not(:disabled){background:#1558d6;box-shadow:0 4px 16px rgba(26,110,255,.38);transform:translateY(-1px);}
+.btn-p:disabled{background:var(--ink4);box-shadow:none;cursor:not-allowed;transform:none;}
+.btn-p.vio{background:var(--violet);box-shadow:0 2px 8px rgba(109,40,217,.28);}
+.btn-p.vio:hover:not(:disabled){background:#5b21b6;box-shadow:0 4px 16px rgba(109,40,217,.38);}
+.btn-s{
+  background:#fff;border:1.5px solid var(--bdr);border-radius:7px;
+  color:var(--ink3);font-family:var(--mono);font-size:10px;font-weight:500;
+  padding:6px 12px;cursor:pointer;display:inline-flex;align-items:center;gap:5px;
+  white-space:nowrap;transition:all .14s;
+}
+.btn-s:hover:not(:disabled){border-color:var(--blue);color:var(--blue);background:var(--blue-d);}
+.btn-s.g{color:var(--green);border-color:rgba(4,120,87,.35);background:var(--green-d);}
+.btn-s.v{color:var(--violet);border-color:rgba(109,40,217,.35);background:var(--violet-d);}
+.btn-s:disabled{opacity:.4;cursor:not-allowed;}
+.sbr{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;}
+.ic{background:var(--surf2);border:1px solid var(--bdr);border-radius:8px;padding:12px;margin-bottom:14px;}
+.ic-r{font-family:var(--mono);font-size:11.5px;color:var(--ink3);line-height:2.1;}
+.ic-r strong{color:var(--ink);font-weight:600;}
+.rl{display:flex;flex-direction:column;gap:6px;}
+.ri{
+  background:#fff;border:1px solid var(--bdr);border-radius:7px;
+  padding:9px 11px;display:flex;align-items:center;gap:8px;
+}
+.ri-stage{
+  width:22px;height:22px;border-radius:5px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:10px;font-weight:800;color:#fff;flex-shrink:0;
+}
+.ri-stage.s1{background:var(--blue);}
+.ri-stage.s2{background:var(--violet);}
+.ri-info{flex:1;min-width:0;}
+.ri-name{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--ink);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+.ri-model{font-family:var(--mono);font-size:9.5px;color:var(--ink4);margin-top:1px;}
+.ri-cnts{display:flex;gap:3px;}
+.ri-cnt{font-family:var(--mono);font-size:10px;font-weight:600;padding:2px 6px;border-radius:3px;}
+.ri-cnt.i{color:var(--green);background:var(--green-d);}
+.ri-cnt.e{color:var(--red);background:var(--red-d);}
+.ri-cnt.n{color:var(--amber);background:var(--amber-d);}
+.ri-del{background:none;border:none;cursor:pointer;color:var(--ink4);font-size:14px;padding:0 2px;transition:color .14s;line-height:1;}
+.ri-del:hover{color:var(--red);}
+.rl-empty{font-size:12px;color:var(--ink4);text-align:center;padding:14px 8px;}
+
+/* ── MAIN ── */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;}
+.tb{
+  padding:10px 18px;border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+  background:#fff;flex-shrink:0;
+}
+.stat{font-family:var(--mono);font-size:11px;font-weight:500;padding:5px 12px;border-radius:20px;border:1px solid;}
+.stat.tot{border-color:var(--bdr2);color:var(--ink3);background:var(--surf2);}
+.stat.inc{border-color:rgba(4,120,87,.4);color:var(--green);background:var(--green-d);}
+.stat.exc{border-color:rgba(185,28,28,.35);color:var(--red);background:var(--red-d);}
+.stat.na{border-color:rgba(180,83,9,.35);color:var(--amber);background:var(--amber-d);}
+.tb-r{margin-left:auto;display:flex;gap:7px;align-items:center;}
+.spill{font-family:var(--mono);font-size:10px;font-weight:600;padding:4px 11px;border-radius:20px;border:1px solid;letter-spacing:.04em;display:none;}
+.spill.s1{color:var(--blue);border-color:rgba(26,110,255,.4);background:var(--blue-d);}
+.spill.s2{color:var(--violet);border-color:rgba(109,40,217,.4);background:var(--violet-d);}
+.pw{padding:10px 18px;border-bottom:1px solid var(--bdr);background:#fff;flex-shrink:0;display:none;}
+.pw.on{display:block;}
+.pm{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;color:var(--ink3);margin-bottom:6px;}
+.pt{height:5px;background:var(--surf3);border-radius:3px;overflow:hidden;}
+.pb{height:100%;border-radius:3px;transition:width .3s ease;width:0%;}
+.pb.s1{background:linear-gradient(90deg,var(--blue),#38bdf8);}
+.pb.s2{background:linear-gradient(90deg,var(--violet),var(--blue));}
+.lw{
+  margin:0 18px 8px;background:var(--surf2);border:1px solid var(--bdr);
+  border-radius:7px;padding:7px 12px;max-height:76px;overflow-y:auto;
+  display:none;flex-shrink:0;scrollbar-width:thin;
+}
+.lw.on{display:block;}
+.ll{font-family:var(--mono);font-size:10.5px;color:var(--ink3);line-height:1.9;display:flex;gap:8px;}
+.lt{color:var(--ink4);flex-shrink:0;}
+.ll.ok .lm{color:var(--green);font-weight:500;}
+.ll.err .lm{color:var(--red);font-weight:500;}
+.ll.info .lm{color:var(--blue);font-weight:500;}
+.ll.warn .lm{color:var(--amber);font-weight:500;}
+.stabs{display:none;border-bottom:1px solid var(--bdr);background:#fff;padding:0 18px;flex-shrink:0;}
+.stabs.on{display:flex;}
+.stab{
+  font-family:var(--mono);font-size:11px;font-weight:500;letter-spacing:.04em;
+  padding:10px 16px;cursor:pointer;color:var(--ink3);
+  border-bottom:2.5px solid transparent;transition:all .14s;white-space:nowrap;
+}
+.stab:hover{color:var(--blue);}
+.stab.on{color:var(--blue);border-bottom-color:var(--blue);}
+.stab.cv.on{color:var(--violet);border-bottom-color:var(--violet);}
+.pnl{display:none;flex:1;flex-direction:column;overflow:hidden;}
+.pnl.on{display:flex;}
+.empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:80px 40px;text-align:center;flex:1;
+}
+.e-ico{font-size:48px;margin-bottom:16px;opacity:.17;}
+.e-ttl{font-family:var(--disp);font-size:20px;font-weight:800;color:var(--ink3);margin-bottom:8px;}
+.e-sub{font-size:13px;color:var(--ink4);max-width:360px;line-height:1.8;}
+.gate-w{display:flex;align-items:center;justify-content:center;flex:1;padding:32px;}
+.gate-c{
+  background:#fff;border:1px solid var(--bdr);border-radius:16px;
+  padding:32px;max-width:460px;width:100%;box-shadow:var(--sh2);text-align:center;
+}
+.gate-ico{font-size:44px;margin-bottom:14px;}
+.gate-ttl{font-family:var(--disp);font-size:20px;font-weight:800;color:var(--ink);margin-bottom:8px;}
+.gate-desc{font-size:13px;color:var(--ink3);line-height:1.7;margin-bottom:22px;}
+.gate-stats{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;margin-bottom:24px;}
+.gs{background:var(--surf2);border:1px solid var(--bdr);border-radius:10px;padding:14px 8px;}
+.gsn{font-family:var(--disp);font-size:34px;font-weight:800;line-height:1;margin-bottom:4px;}
+.gsl{font-family:var(--mono);font-size:10px;font-weight:600;letter-spacing:.08em;color:var(--ink3);text-transform:uppercase;}
+.gs.gi .gsn{color:var(--green);}
+.gs.ge .gsn{color:var(--red);}
+.gs.gn .gsn{color:var(--amber);}
+.gate-acts{display:flex;flex-direction:column;gap:8px;}
+.gbtn{padding:12px 18px;border:none;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600;transition:all .15s;}
+.gbtn.pr{background:var(--violet);color:#fff;font-family:var(--disp);font-size:14px;font-weight:700;box-shadow:0 2px 8px rgba(109,40,217,.28);}
+.gbtn.pr:hover{background:#5b21b6;transform:translateY(-1px);}
+.gbtn.sc{background:#fff;border:1.5px solid var(--bdr);color:var(--ink3);font-family:var(--mono);font-size:11px;}
+.gbtn.sc:hover{border-color:var(--blue);color:var(--blue);background:var(--blue-d);}
+.tw{flex:1;overflow:auto;padding:0 18px 24px;scrollbar-width:thin;scrollbar-color:var(--bdr) transparent;}
+.tw::-webkit-scrollbar{width:5px;height:5px;}
+.tw::-webkit-scrollbar-thumb{background:var(--bdr);border-radius:3px;}
+table{width:100%;border-collapse:separate;border-spacing:0;font-size:13px;min-width:900px;}
+thead th{
+  background:#fff;padding:10px 13px;text-align:left;
+  font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.06em;color:var(--ink2);
+  border-bottom:2px solid var(--bdr);
+  white-space:nowrap;position:sticky;top:0;z-index:2;text-transform:uppercase;
+}
+tbody tr:nth-child(even) td{background:rgba(238,241,248,.55);}
+tbody tr:hover td{background:#e6eeff !important;}
+tbody td{
+  padding:9px 13px;border-bottom:1px solid var(--bdr);
+  vertical-align:top;line-height:1.5;color:var(--ink);font-size:13px;
+}
+.ct{max-height:52px;overflow:hidden;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;word-break:break-word;}
+.badge{
+  display:inline-flex;align-items:center;gap:3px;padding:3px 9px;
+  border-radius:5px;font-family:var(--mono);font-size:10px;
+  font-weight:700;letter-spacing:.04em;white-space:nowrap;text-transform:uppercase;
+}
+.badge.bi{background:var(--green-d);color:var(--green);border:1px solid rgba(4,120,87,.3);}
+.badge.be{background:var(--red-d);color:var(--red);border:1px solid rgba(185,28,28,.25);}
+.badge.bn{background:var(--amber-d);color:var(--amber);border:1px solid rgba(180,83,9,.25);}
+.badge.bp{background:var(--blue-d);color:var(--blue);border:1px solid rgba(26,110,255,.25);animation:pulse 1.4s infinite;}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.45}}
+.dots{display:flex;gap:3px;}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--surf3);border:1px solid var(--bdr2);}
+.dot.on{background:var(--violet);border-color:var(--violet);}
+select.ov{
+  padding:3px 8px;font-size:11px;font-weight:500;border-radius:5px;
+  width:auto;cursor:pointer;background:#fff;border:1.5px solid var(--bdr);
+  color:var(--ink2);font-family:var(--mono);
+}
+select.ov:focus{border-color:var(--blue);outline:none;}
+.cv-pnl{display:none;flex-direction:column;flex:1;overflow:hidden;}
+.cv-pnl.on{display:flex;}
+.cv-tb{
+  padding:10px 18px;border-bottom:1px solid var(--bdr);
+  display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+  background:#fff;flex-shrink:0;
+}
+.cv-title{font-family:var(--disp);font-size:14px;font-weight:700;color:var(--ink);}
+.rtag{font-family:var(--mono);font-size:10.5px;font-weight:500;padding:3px 10px;border-radius:4px;border:1px solid;}
+.rtag.s1{color:var(--blue);border-color:rgba(26,110,255,.35);background:var(--blue-d);}
+.rtag.s2{color:var(--violet);border-color:rgba(109,40,217,.35);background:var(--violet-d);}
+.cv-w{flex:1;overflow:auto;padding:16px 18px 24px;}
+.cv-t{
+  width:100%;border-collapse:separate;border-spacing:0;
+  background:#fff;border-radius:10px;overflow:hidden;box-shadow:var(--sh);font-size:13px;
+}
+.cv-t thead th{
+  background:var(--surf2);padding:10px 13px;text-align:left;
+  font-family:var(--mono);font-size:10.5px;font-weight:600;
+  letter-spacing:.05em;color:var(--ink2);
+  border-bottom:2px solid var(--bdr);white-space:nowrap;text-transform:uppercase;
+  position:sticky;top:0;z-index:2;
+}
+.cv-t thead th.rc{text-align:center;min-width:130px;}
+.cv-t thead th.ac{text-align:center;min-width:100px;}
+.cv-t tbody tr:nth-child(even) td{background:rgba(238,241,248,.4);}
+.cv-t tbody tr:hover td{background:#e6eeff;}
+.cv-t tbody td{padding:9px 13px;border-bottom:1px solid var(--bdr);font-size:13px;color:var(--ink);vertical-align:middle;}
+.cv-t tbody td.rc{text-align:center;}
+.cb{
+  display:inline-flex;align-items:center;justify-content:center;gap:3px;
+  padding:4px 10px;border-radius:5px;font-family:var(--mono);
+  font-size:10px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;min-width:95px;
+}
+.cb.ci{background:var(--green-d);color:var(--green);border:1px solid rgba(4,120,87,.28);}
+.cb.ce{background:var(--red-d);color:var(--red);border:1px solid rgba(185,28,28,.22);}
+.cb.cn{background:var(--amber-d);color:var(--amber);border:1px solid rgba(180,83,9,.22);}
+.cb.cx{background:var(--surf2);color:var(--ink4);border:1px solid var(--bdr);}
+.ab{display:inline-block;padding:3px 9px;border-radius:4px;font-family:var(--mono);font-size:10px;font-weight:700;}
+.ab.ag{background:var(--green-d);color:var(--green);border:1px solid rgba(4,120,87,.28);}
+.ab.pt{background:var(--amber-d);color:var(--amber);border:1px solid rgba(180,83,9,.22);}
+.ab.cf{background:var(--red-d);color:var(--red);border:1px solid rgba(185,28,28,.22);}
+.cv-empty{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  padding:60px;text-align:center;flex:1;
+}
+.cv-empty .ico{font-size:44px;margin-bottom:14px;opacity:.17;}
+.cv-empty h3{font-family:var(--disp);font-size:17px;font-weight:800;color:var(--ink3);margin-bottom:6px;}
+.cv-empty p{font-size:13px;color:var(--ink4);max-width:290px;line-height:1.8;}
+.modal-bg{
+  position:fixed;inset:0;background:rgba(13,21,38,.45);
+  backdrop-filter:blur(4px);z-index:500;
+  display:none;align-items:center;justify-content:center;
+}
+.modal-bg.on{display:flex;}
+.modal{
+  background:#fff;border:1px solid var(--bdr);border-radius:14px;
+  padding:28px;max-width:400px;width:90%;box-shadow:var(--sh2);
+}
+.modal h3{font-family:var(--disp);font-size:17px;font-weight:800;color:var(--ink);margin-bottom:10px;}
+.modal p{font-size:13px;color:var(--ink3);line-height:1.7;}
+.modal-btns{display:flex;gap:8px;justify-content:flex-end;margin-top:18px;}
+.mb{padding:9px 18px;border:none;border-radius:7px;cursor:pointer;font-family:var(--mono);font-size:12px;font-weight:600;}
+.mb.pr{background:var(--blue);color:#fff;}
+.mb.gh{background:#fff;color:var(--ink3);border:1.5px solid var(--bdr);}
+.mb.gh:hover{border-color:var(--blue);color:var(--blue);}
+.toasts{position:fixed;bottom:24px;right:24px;z-index:600;display:flex;flex-direction:column;gap:8px;pointer-events:none;}
+.toast{
+  background:var(--ink);color:#fff;padding:10px 16px;
+  border-radius:8px;font-family:var(--mono);font-size:12px;font-weight:500;
+  box-shadow:0 4px 20px rgba(0,0,0,.25);max-width:340px;
+  animation:tIn .25s ease;pointer-events:auto;
+}
+@keyframes tIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.toast.ok{background:var(--green);}
+.toast.err{background:var(--red);}
+.toast.warn{background:var(--amber);}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-box">SLR</div>
+    <span class="logo-name">SLR<em>·AI</em></span>
+  </div>
+  <div class="sep"></div>
+  <nav class="pipe">
+    <div class="ps active" id="nav-setup" onclick="navTo('setup')"><span class="ps-n">S</span>SETUP</div>
+    <span class="ps-arr">›</span>
+    <div class="ps locked" id="nav-s1" onclick="navTo('s1')"><span class="ps-n">1</span>ABSTRACT SCREENING</div>
+    <span class="ps-arr">›</span>
+    <div class="ps locked" id="nav-s2" onclick="navTo('s2')"><span class="ps-n">2</span>FULL-TEXT REVIEW</div>
+    <span class="ps-arr" style="margin:0 8px">|</span>
+    <div class="ps cmp locked" id="nav-cmp" onclick="navTo('compare')"><span class="ps-n">⊞</span>COMPARISON</div>
+  </nav>
+  <div class="hdr-r">
+    <div class="vtag">v1.0</div>
+  </div>
+</header>
+
+<div class="app">
+<!-- SIDEBAR -->
+<aside class="sb">
+
+  <!-- SETUP sidebar -->
+  <div class="sb-sec on" id="sb-setup">
+    <div class="sb-title">Review Setup</div>
+    <div class="sb-desc">Configure your API key, research criteria, and upload references. Settings carry over to all runs.</div>
+    <div class="fg">
+      <div class="fl">⚙ API Configuration</div>
+      <div class="api-blk">
+        <div class="api-row"><label>Provider</label>
+          <select id="llmProvider" onchange="updateModels()">
+            <option value="anthropic">Anthropic Claude</option>
+            <option value="openai">OpenAI GPT</option>
+            <option value="gemini">Google Gemini</option>
+          </select>
+        </div>
+        <div class="api-row"><label>Model</label>
+          <select id="llmModel">
+            <option value="claude-opus-4-6">claude-opus-4-6</option>
+            <option value="claude-sonnet-4-6" selected>claude-sonnet-4-6</option>
+            <option value="claude-haiku-4-5-20251001">claude-haiku-4-5</option>
+          </select>
+        </div>
+        <div class="api-row"><label>API Key</label>
+          <input type="password" id="apiKey" placeholder="sk-ant-…" autocomplete="off">
+        </div>
+        <div class="api-row"><label>Run Name</label>
+          <input type="text" id="runName" placeholder="e.g. Sonnet Run 1" value="Run 1">
+        </div>
+      </div>
+    </div>
+    <div class="fg"><div class="fl"><span class="bn">1</span>Research Topic</div>
+      <textarea id="topic" rows="3" placeholder="e.g. Impact of AI on clinical decision support in emergency medicine…"></textarea>
+    </div>
+    <div class="fg"><div class="fl"><span class="bn">2</span>Inclusion Criteria</div>
+      <textarea id="inclusion" rows="3" placeholder="e.g. Peer-reviewed, 2015–2025, human subjects, RCT or cohort, English…"></textarea>
+    </div>
+    <div class="fg"><div class="fl"><span class="bn">3</span>Exclusion Criteria</div>
+      <textarea id="exclusion" rows="3" placeholder="e.g. Conference abstracts, n < 50 participants, non-English…"></textarea>
+    </div>
+    <div class="fg"><div class="fl"><span class="bn">4</span>Extraction Fields <span class="opt">STEP 2</span></div>
+      <textarea id="dataFields" rows="2" placeholder="Study design, Sample size, Intervention, Primary outcome, AUC…"></textarea>
+    </div>
+    <div class="fg"><div class="fl"><span class="bn">5</span>Extra Context <span class="opt">OPTIONAL</span></div>
+      <textarea id="extra" rows="2" placeholder="e.g. Treat editorials as excluded. Focus on prospective studies…"></textarea>
+    </div>
+    <div class="div"><div class="div-l"></div><div class="div-t">References</div><div class="div-l"></div></div>
+    <div class="fg"><div class="fl"><span class="bn">6</span>Upload Excel / CSV</div>
+      <div class="uz" id="excelZone">
+        <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" onchange="handleExcel(this)">
+        <span class="uz-icon">📊</span>
+        <div class="uz-txt">Drop <strong>.xlsx / .csv</strong> or click to browse</div>
+      </div>
+      <div class="chips" id="excelChips"></div>
+    </div>
+    <div class="fg">
+      <div class="fl">— or paste APA references</div>
+      <textarea id="pasteRefs" rows="4" placeholder="Smith, J. (2020). Title. Journal. https://doi.org/10.xxx&#10;Brown, A. (2021). Another paper…"></textarea>
+    </div>
+    <button class="btn-p" id="startBtn" onclick="goToS1()">▶ Begin Abstract Screening</button>
+  </div>
+
+  <!-- S1 sidebar -->
+  <div class="sb-sec" id="sb-s1">
+    <div class="sb-title" style="color:var(--blue)">① Abstract Screening</div>
+    <div class="sb-desc">AI screens using title, abstract and metadata only. Each run is saved independently for comparison.</div>
+    <div class="ic">
+      <div class="ic-r">📚 Papers: <strong id="s1-total">—</strong></div>
+      <div class="ic-r">🤖 Model: <strong id="s1-model">—</strong></div>
+      <div class="ic-r">🏷 Run: <strong id="s1-rname">—</strong></div>
+      <div class="ic-r">📋 Saved runs: <strong id="s1-rcnt">0</strong></div>
+    </div>
+    <button class="btn-p" id="runS1Btn" onclick="runS1()"><span id="s1Txt">▶ Run Abstract Screening</span></button>
+    <div class="sbr">
+      <button class="btn-s g" onclick="exportS1()">⬇ Export Step 1</button>
+      <button class="btn-s v" onclick="navTo('compare')">⊞ Compare</button>
+      <button class="btn-s" onclick="navTo('setup')">← Setup</button>
+    </div>
+    <div class="div"><div class="div-l"></div><div class="div-t">Saved Step 1 Runs</div><div class="div-l"></div></div>
+    <div class="rl" id="s1-rl"><div class="rl-empty">No runs yet</div></div>
+  </div>
+
+  <!-- S2 sidebar -->
+  <div class="sb-sec" id="sb-s2">
+    <div class="sb-title" style="color:var(--violet)">② Full-Text Review</div>
+    <div class="sb-desc">Deep extraction from included papers. Upload PDFs matched by DOI or title fragment in filename.</div>
+    <div class="fg"><div class="fl">PDF Full Texts <span class="opt">OPTIONAL</span></div>
+      <div class="uz" id="pdfZone">
+        <input type="file" id="pdfFiles" accept=".pdf" multiple onchange="handlePDFs(this)">
+        <span class="uz-icon">📄</span>
+        <div class="uz-txt">Drop <strong>PDFs</strong> — name by DOI or title fragment</div>
+      </div>
+      <div class="chips" id="pdfChips"></div>
+    </div>
+    <div class="ic">
+      <div class="ic-r">✓ Included papers: <strong id="s2-inc">—</strong></div>
+      <div class="ic-r">📋 Fields: <strong id="s2-fields" style="color:var(--violet)">—</strong></div>
+      <div class="ic-r">📋 Saved runs: <strong id="s2-rcnt">0</strong></div>
+    </div>
+    <button class="btn-p vio" id="runS2Btn" onclick="runS2()"><span id="s2Txt">▶ Run Full-Text Review</span></button>
+    <div class="sbr">
+      <button class="btn-s g" onclick="exportFinal()">⬇ Export Final</button>
+      <button class="btn-s v" onclick="navTo('compare')">⊞ Compare</button>
+      <button class="btn-s" onclick="navTo('s1')">← Step 1</button>
+    </div>
+    <div class="div"><div class="div-l"></div><div class="div-t">Saved Step 2 Runs</div><div class="div-l"></div></div>
+    <div class="rl" id="s2-rl"><div class="rl-empty">No runs yet</div></div>
+  </div>
+
+  <!-- Compare sidebar -->
+  <div class="sb-sec" id="sb-compare">
+    <div class="sb-title" style="color:var(--violet)">⊞ Run Comparison</div>
+    <div class="sb-desc">Compare AI decisions across all saved runs. Rows = papers, columns = runs. Agreement computed automatically.</div>
+    <div class="ic">
+      <div class="ic-r">Step 1 runs: <strong id="cmp-s1-cnt">0</strong></div>
+      <div class="ic-r">Step 2 runs: <strong id="cmp-s2-cnt">0</strong></div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:7px;margin-bottom:16px;">
+      <button class="btn-s" style="justify-content:center" onclick="showCmp('s1')">📊 Step 1 Comparison</button>
+      <button class="btn-s v" style="justify-content:center" onclick="showCmp('s2')">📊 Step 2 Comparison</button>
+      <button class="btn-s g" style="justify-content:center" onclick="exportCmp()">⬇ Export Comparison Excel</button>
+    </div>
+    <div class="div"><div class="div-l"></div><div class="div-t">Legend</div><div class="div-l"></div></div>
+    <div style="font-size:12.5px;color:var(--ink3);line-height:2.7;">
+      <div><span class="ab ag" style="margin-right:8px">AGREE</span> All runs same decision</div>
+      <div><span class="ab pt" style="margin-right:8px">PARTIAL</span> Some runs differ</div>
+      <div><span class="ab cf" style="margin-right:8px">CONFLICT</span> Runs completely disagree</div>
+    </div>
+  </div>
+
+</aside>
+
+<!-- MAIN -->
+<main class="main">
+  <!-- Toolbar -->
+  <div class="tb">
+    <div class="stat tot" id="st-tot">● 0 papers</div>
+    <div class="stat inc" id="st-inc">✓ 0 included</div>
+    <div class="stat exc" id="st-exc">✗ 0 excluded</div>
+    <div class="stat na"  id="st-na">? 0 n/a</div>
+    <div class="tb-r">
+      <div class="spill" id="spill"></div>
+      <button class="btn-s" onclick="clearAll()">✕ Reset</button>
+    </div>
+  </div>
+  <!-- Progress -->
+  <div class="pw" id="pw">
+    <div class="pm"><span id="plabel">Processing…</span><span id="pcount">0 / 0</span></div>
+    <div class="pt"><div class="pb s1" id="pbar"></div></div>
+  </div>
+  <!-- Log -->
+  <div class="lw" id="lw"></div>
+  <!-- Sub-tabs -->
+  <div class="stabs" id="stabs">
+    <div class="stab on"  id="stab-r" onclick="switchTab('r')">Results Table</div>
+    <div class="stab cv"  id="stab-c" onclick="switchTab('c')">⊞ Run Comparison</div>
+  </div>
+  <!-- Results panel -->
+  <div class="pnl on" id="pnl-r">
+    <div class="empty" id="emptyState">
+      <div class="e-ico">🔬</div>
+      <div class="e-ttl">Ready to Begin</div>
+      <div class="e-sub">Configure your review in the Setup panel then run the two-stage AI screening pipeline. Each run is saved — compare decisions across models in the Comparison tab.</div>
+    </div>
+    <div class="gate-w" id="gateWrap" style="display:none">
+      <div class="gate-c">
+        <div class="gate-ico">🎯</div>
+        <div class="gate-ttl">Abstract Screening Complete</div>
+        <div class="gate-desc">Step 1 is done. Review results and apply manual overrides if needed, then proceed to full-text review. Run again with a different model to build comparison data.</div>
+        <div class="gate-stats">
+          <div class="gs gi"><div class="gsn" id="gate-i">0</div><div class="gsl">Included</div></div>
+          <div class="gs ge"><div class="gsn" id="gate-e">0</div><div class="gsl">Excluded</div></div>
+          <div class="gs gn"><div class="gsn" id="gate-n">0</div><div class="gsl">N/A</div></div>
+        </div>
+        <div class="gate-acts">
+          <button class="gbtn pr" onclick="proceedToS2()">▶ Proceed to Full-Text Review →</button>
+          <button class="gbtn sc" onclick="exportS1()">⬇ Export Step 1 Excel</button>
+          <button class="gbtn sc" onclick="showTableView()">📋 View Full Results Table</button>
+        </div>
+      </div>
+    </div>
+    <div class="tw" id="tableWrap" style="display:none">
+      <table><thead id="tHead"></thead><tbody id="tBody"></tbody></table>
+    </div>
+  </div>
+  <!-- Compare panel -->
+  <div class="pnl" id="pnl-c">
+    <div class="cv-tb">
+      <span class="cv-title" id="cvTitle">Select a comparison from the sidebar</span>
+      <div style="margin-left:auto;display:flex;gap:6px;" id="cvTags"></div>
+    </div>
+    <div class="cv-w" id="cvWrap">
+      <div class="cv-empty">
+        <div class="ico">⊞</div>
+        <h3>No Comparison Yet</h3>
+        <p>Run abstract screening at least twice with different models or settings to compare decisions here.</p>
+      </div>
+    </div>
+  </div>
+</main>
+</div>
+
+<!-- Modal -->
+<div class="modal-bg" id="apiModal">
+  <div class="modal">
+    <h3>⚠ API Key Required</h3>
+    <p>Enter your API key in the Setup panel. Supported: Anthropic, OpenAI, Google Gemini. Your key stays in this browser session only and is never stored.</p>
+    <div class="modal-btns">
+      <button class="mb gh" onclick="closeModal()">Cancel</button>
+      <button class="mb pr" onclick="closeModal();navTo('setup');setTimeout(()=>document.getElementById('apiKey').focus(),200)">Go to Setup →</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toasts -->
+<div class="toasts" id="toasts"></div>
+
+<script>
+// ══════════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════════
+let allPapers    = [];   // uploaded reference list
+let s1Results    = [];   // current Step 1 working results
+let s2Results    = [];   // current Step 2 working results
+let pdfMap       = {};   // filename → File
+let extraCols    = [];   // user-defined extraction field names
+let savedRuns    = [];   // { id, stage, name, model, provider, ts, results[] }
+let runCounter   = 0;
+let isRunning    = false;
+let curStage     = 'setup';
+let curTab       = 'r';
+
+// Boot PDF.js worker
+if (window.pdfjsLib) {
+  pdfjsLib.GlobalWorkerOptions.workerSrc =
+    'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+}
+
+// ══════════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════════
+function navTo(stage) {
+  if (isRunning && stage !== curStage) {
+    toast('Cannot navigate while a run is in progress.', 'warn'); return;
+  }
+  curStage = stage;
+
+  // Reset nav classes
+  ['nav-setup','nav-s1','nav-s2','nav-cmp'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = el.className.replace(/ active| done| locked/g,'').trim();
+  });
+
+  const s1done = savedRuns.some(r => r.stage === 's1');
+  const s2done = savedRuns.some(r => r.stage === 's2');
+  const anydone = s1done || s2done;
+
+  const add = (id, cls) => document.getElementById(id).classList.add(cls);
+
+  if (stage === 'setup') {
+    add('nav-setup','active');
+    if (!allPapers.length) add('nav-s1','locked');
+    if (!s1done) add('nav-s2','locked');
+    if (!anydone) add('nav-cmp','locked');
+  } else if (stage === 's1') {
+    add('nav-setup','done'); add('nav-s1','active');
+    if (!s1done) add('nav-s2','locked');
+    if (!anydone) add('nav-cmp','locked');
+  } else if (stage === 's2') {
+    add('nav-setup','done'); add('nav-s1','done'); add('nav-s2','active');
+    if (!anydone) add('nav-cmp','locked');
+  } else if (stage === 'compare') {
+    add('nav-setup','done'); add('nav-s1','done'); add('nav-s2','done'); add('nav-cmp','active');
+  }
+
+  // Sidebar panels
+  document.querySelectorAll('.sb-sec').forEach(el => el.classList.remove('on'));
+  const sbMap = { setup:'sb-setup', s1:'sb-s1', s2:'sb-s2', compare:'sb-compare' };
+  document.getElementById(sbMap[stage]).classList.add('on');
+
+  // Populate sidebar info
+  if (stage === 's1') {
+    document.getElementById('s1-total').textContent = allPapers.length;
+    document.getElementById('s1-model').textContent = document.getElementById('llmModel').value;
+    document.getElementById('s1-rname').textContent = document.getElementById('runName').value || 'Run';
+    renderRunList('s1');
+  }
+  if (stage === 's2') {
+    const inc = s1Results.filter(r => effDec(r) === 'INCLUDED').length;
+    document.getElementById('s2-inc').textContent    = inc;
+    document.getElementById('s2-fields').textContent = extraCols.length ? extraCols.join(', ') : '(none defined)';
+    renderRunList('s2');
+  }
+  if (stage === 'compare') {
+    updateCmpSidebar();
+    document.getElementById('stabs').classList.add('on');
+    switchTab('c');
+  }
+}
+
+function switchTab(tab) {
+  curTab = tab;
+  document.getElementById('stab-r').classList.toggle('on', tab === 'r');
+  document.getElementById('stab-c').classList.toggle('on', tab === 'c');
+  document.getElementById('pnl-r').classList.toggle('on', tab === 'r');
+  document.getElementById('pnl-c').classList.toggle('on', tab === 'c');
+}
+
+// ══════════════════════════════════════════════════════
+// SETUP → STEP 1
+// ══════════════════════════════════════════════════════
+function goToS1() {
+  if (!document.getElementById('apiKey').value.trim()) {
+    document.getElementById('apiModal').classList.add('on'); return;
+  }
+  if (!document.getElementById('topic').value.trim()) {
+    toast('Please enter a Research Topic first.', 'err'); return;
+  }
+
+  // Merge uploaded + pasted references
+  let refs = [...allPapers];
+  const pasted = document.getElementById('pasteRefs').value.trim();
+  if (pasted) refs = refs.concat(parsePasted(pasted));
+  if (!refs.length) {
+    toast('Add references via Excel upload or paste APA text below.', 'err'); return;
+  }
+
+  allPapers = refs;
+  extraCols = (document.getElementById('dataFields').value || '')
+    .split(',').map(s => s.trim()).filter(Boolean);
+
+  document.getElementById('nav-s1').classList.remove('locked');
+  navTo('s1');
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 1 — ABSTRACT SCREENING
+// ══════════════════════════════════════════════════════
+async function runS1() {
+  if (isRunning) return;
+  const cfg = getConfig();
+  if (!cfg.apiKey) { document.getElementById('apiModal').classList.add('on'); return; }
+
+  isRunning = true;
+  s1Results = [];
+  document.getElementById('runS1Btn').disabled = true;
+  document.getElementById('s1Txt').textContent = '⏳ Screening…';
+
+  setSpill('STEP 1 · ABSTRACT SCREENING', 's1');
+  buildS1Head(); showTableView();
+  showProg(true,'s1'); showLog(true);
+  document.getElementById('stabs').classList.add('on');
+
+  log('info', `[S1] "${cfg.runName}" · ${cfg.model} · ${allPapers.length} papers`);
+
+  for (let i = 0; i < allPapers.length; i++) {
+    const p = allPapers[i];
+    s1Results.push({ ...p, _dec:'PROCESSING', _reason:'', _rel:0 });
+    renderS1Row(i, s1Results[i]);
+    setProgress(i, allPapers.length, p.title || p.reference || `Paper ${i+1}`, 's1');
+
+    try {
+      const res = await withRetry(() => screenAbstract(p, cfg));
+      s1Results[i] = { ...p, ...res };
+      const d = s1Results[i]._dec;
+      log(d==='INCLUDED'?'ok':d==='EXCLUDED'?'info':'warn',
+        `[${i+1}/${allPapers.length}] ${d} — ${(p.title||p.reference||'').substring(0,58)}…`);
+    } catch (err) {
+      s1Results[i] = { ...p, _dec:'NOT ACCESSIBLE', _reason:'API error: '+err.message, _rel:0 };
+      log('err', `[${i+1}] ${err.message.substring(0,90)}`);
+    }
+
+    renderS1Row(i, s1Results[i]);
+    updateStats(s1Results);
+    await sleep(240);
+  }
+
+  setProgress(allPapers.length, allPapers.length, 'Complete', 's1');
+  const inc = s1Results.filter(r => effDec(r) === 'INCLUDED').length;
+  log('ok', `[S1] Done — ${inc} included · ${s1Results.filter(r=>effDec(r)==='EXCLUDED').length} excluded`);
+
+  saveRun('s1', cfg, [...s1Results]);
+  isRunning = false;
+  document.getElementById('runS1Btn').disabled = false;
+  document.getElementById('s1Txt').textContent = '▶ Run Again (New Run)';
+  document.getElementById('nav-s2').classList.remove('locked');
+  document.getElementById('nav-cmp').classList.remove('locked');
+  renderRunList('s1');
+  updateCmpSidebar();
+  showGate();
+  toast(`Step 1 complete — ${inc} papers included`, 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// STEP 2 — FULL-TEXT REVIEW
+// ══════════════════════════════════════════════════════
+function proceedToS2() { navTo('s2'); }
+
+async function runS2() {
+  if (isRunning) return;
+  const cfg = getConfig();
+  if (!cfg.apiKey) { document.getElementById('apiModal').classList.add('on'); return; }
+
+  const included = s1Results.filter(r => effDec(r) === 'INCLUDED');
+  if (!included.length) { toast('No INCLUDED papers from Step 1.', 'err'); return; }
+
+  isRunning = true;
+  s2Results = JSON.parse(JSON.stringify(s1Results));
+  document.getElementById('runS2Btn').disabled = true;
+  document.getElementById('s2Txt').textContent = '⏳ Reviewing…';
+
+  setSpill('STEP 2 · FULL-TEXT REVIEW', 's2');
+  buildS2Head(); showTableView();
+  showProg(true,'s2'); showLog(true);
+
+  // Initialise status for all rows
+  s2Results.forEach((r,i) => {
+    r._ftStatus = effDec(r) === 'INCLUDED' ? 'PENDING' : 'SKIPPED';
+    extraCols.forEach(c => { if (r[c] === undefined) r[c] = ''; });
+    renderS2Row(i, r);
+  });
+
+  const incIdx = s2Results.map((r,i) => effDec(r)==='INCLUDED' ? i : -1).filter(i => i >= 0);
+  log('info', `[S2] "${cfg.runName}" · ${incIdx.length} papers to process`);
+
+  for (let k = 0; k < incIdx.length; k++) {
+    const i = incIdx[k];
+    const p = s1Results[i];
+    setProgress(k, incIdx.length, p.title||p.reference||`Paper ${i+1}`, 's2');
+    s2Results[i]._ftStatus = 'PROCESSING';
+    renderS2Row(i, s2Results[i]);
+
+    try {
+      const pdfTxt = await extractPdfText(p);
+      const res = await withRetry(() => reviewFullText(p, cfg, pdfTxt));
+      s2Results[i] = { ...s2Results[i], ...res, _ftStatus:'DONE' };
+      log('ok', `[${k+1}/${incIdx.length}] Extracted — ${(p.title||'').substring(0,58)}…`);
+    } catch (err) {
+      s2Results[i]._ftStatus = 'ERROR';
+      s2Results[i]._ftNote   = err.message;
+      log('err', `[${k+1}] ${err.message.substring(0,90)}`);
+    }
+
+    renderS2Row(i, s2Results[i]);
+    updateStats(s2Results);
+    await sleep(260);
+  }
+
+  setProgress(incIdx.length, incIdx.length, 'Complete', 's2');
+  log('ok', `[S2] Done — ${incIdx.length} papers processed`);
+  saveRun('s2', cfg, [...s2Results]);
+  isRunning = false;
+  document.getElementById('runS2Btn').disabled = false;
+  document.getElementById('s2Txt').textContent = '▶ Run Again (New Run)';
+  document.getElementById('nav-cmp').classList.remove('locked');
+  renderRunList('s2');
+  updateCmpSidebar();
+  toast('Step 2 complete — full-text extraction done', 'ok');
+}
+
+// ══════════════════════════════════════════════════════
+// CONFIG HELPER
+// ══════════════════════════════════════════════════════
+function getConfig() {
+  return {
+    apiKey:   document.getElementById('apiKey').value.trim(),
+    provider: document.getElementById('llmProvider').value,
+    model:    document.getElementById('llmModel').value,
+    runName:  document.getElementById('runName').value.trim() || `Run ${runCounter+1}`,
+    topic:    document.getElementById('topic').value.trim(),
+    inclusion:document.getElementById('inclusion').value.trim(),
+    exclusion:document.getElementById('exclusion').value.trim(),
+    extra:    document.getElementById('extra').value.trim(),
+  };
+}
+
+// ══════════════════════════════════════════════════════
+// RUN MANAGEMENT
+// ══════════════════════════════════════════════════════
+function saveRun(stage, cfg, results) {
+  savedRuns.push({
+    id: ++runCounter, stage,
+    name: cfg.runName, model: cfg.model, provider: cfg.provider,
+    ts: new Date().toLocaleTimeString(), results
+  });
+  updateCmpSidebar();
+}
+
+function renderRunList(stage) {
+  const el = document.getElementById(`${stage}-rl`);
+  const runs = savedRuns.filter(r => r.stage === stage);
+  if (!runs.length) { el.innerHTML = '<div class="rl-empty">No runs yet</div>'; return; }
+  el.innerHTML = runs.map(r => {
+    const inc = r.results.filter(p => effDec(p)==='INCLUDED').length;
+    const exc = r.results.filter(p => effDec(p)==='EXCLUDED').length;
+    const na  = r.results.filter(p => effDec(p)==='NOT ACCESSIBLE').length;
+    return `<div class="ri">
+      <div class="ri-stage ${stage}">${stage==='s1'?'1':'2'}</div>
+      <div class="ri-info">
+        <div class="ri-name" title="${x(r.name)}">${x(r.name)}</div>
+        <div class="ri-model">${x(r.model)} · ${r.ts}</div>
+      </div>
+      <div class="ri-cnts">
+        <span class="ri-cnt i">${inc}✓</span>
+        <span class="ri-cnt e">${exc}✗</span>
+        <span class="ri-cnt n">${na}?</span>
+      </div>
+      <button class="ri-del" onclick="delRun(${r.id})" title="Delete run">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function delRun(id) {
+  if (!confirm('Delete this run? This cannot be undone.')) return;
+  savedRuns = savedRuns.filter(r => r.id !== id);
+  renderRunList('s1'); renderRunList('s2'); updateCmpSidebar();
+}
+
+function updateCmpSidebar() {
+  const s1 = savedRuns.filter(r=>r.stage==='s1').length;
+  const s2 = savedRuns.filter(r=>r.stage==='s2').length;
+  ['cmp-s1-cnt','s1-rcnt'].forEach(id => document.getElementById(id).textContent = s1);
+  ['cmp-s2-cnt','s2-rcnt'].forEach(id => document.getElementById(id).textContent = s2);
+}
+
+// ══════════════════════════════════════════════════════
+// AI — STEP 1 ABSTRACT SCREENER
+// ══════════════════════════════════════════════════════
+async function screenAbstract(p, cfg) {
+  const sys = `You are a rigorous systematic literature review screener. Make precise INCLUDE/EXCLUDE/NOT ACCESSIBLE decisions using ONLY the abstract and bibliographic metadata provided — never speculate about full-text content. Return a single valid JSON object with no additional text.`;
+
+  const usr = `Screen this paper for inclusion in a systematic literature review.
+
+TOPIC: ${cfg.topic}
+
+INCLUSION CRITERIA:
+${cfg.inclusion || '(none specified — include all papers with sufficient quality)'}
+
+EXCLUSION CRITERIA:
+${cfg.exclusion || '(none specified)'}
+${cfg.extra ? '\nADDITIONAL INSTRUCTIONS:\n' + cfg.extra : ''}
+
+PAPER METADATA:
+Reference : ${p.reference || 'N/A'}
+Title     : ${p.title     || 'N/A'}
+Authors   : ${p.author    || 'N/A'}
+Year      : ${p.year      || 'N/A'}
+Journal   : ${p.journal   || 'N/A'}
+DOI       : ${p.doi       || 'N/A'}
+Abstract  : ${p.abstract  || 'NOT PROVIDED'}
+
+DECISION RULES:
+- INCLUDED  → paper clearly meets all inclusion criteria and violates no exclusion criterion
+- EXCLUDED  → paper fails at least one inclusion criterion OR meets at least one exclusion criterion; state which criterion
+- NOT ACCESSIBLE → no abstract AND insufficient metadata to screen; use sparingly
+
+Always give a specific, concise reason regardless of decision.
+
+Respond ONLY with valid JSON:
+{
+  "decision"         : "INCLUDED" | "EXCLUDED" | "NOT ACCESSIBLE",
+  "reason"           : "one sentence citing the specific criterion that drove this decision",
+  "relevancy"        : 1,
+  "title"            : "confirmed or corrected title",
+  "author"           : "author string",
+  "year"             : "4-digit year",
+  "publication_title": "journal or source name",
+  "issn"             : "ISSN or empty string",
+  "doi"              : "DOI or empty string",
+  "url"              : "URL or empty string",
+  "abstract"         : "abstract text",
+  "item_type"        : "Journal Article | Review | Conference Paper | Book Chapter | Other"
+}`;
+
+  const raw = await callAPI(cfg, sys, usr);
+  const j   = parseJSON(raw);
+  return {
+    _dec    : ['INCLUDED','EXCLUDED','NOT ACCESSIBLE'].includes(j.decision) ? j.decision : 'NOT ACCESSIBLE',
+    _reason : j.reason            || '',
+    _rel    : Math.min(5, Math.max(0, parseInt(j.relevancy) || 0)),
+    title   : j.title             || p.title   || '',
+    author  : j.author            || p.author  || '',
+    year    : j.year              || p.year    || '',
+    journal : j.publication_title || p.journal || '',
+    issn    : j.issn              || p.issn    || '',
+    doi     : j.doi               || p.doi     || '',
+    url     : j.url               || p.url     || '',
+    abstract: j.abstract          || p.abstract|| '',
+    type    : j.item_type         || p.type    || '',
+  };
+}
+
+// ══════════════════════════════════════════════════════
+// AI — STEP 2 FULL-TEXT EXTRACTOR
+// ══════════════════════════════════════════════════════
+async function reviewFullText(p, cfg, pdfText) {
+  const fieldLines = extraCols.length
+    ? '\nEXTRACTION FIELDS — extract each field or write "Not reported":\n' +
+      extraCols.map(f => `- "${f}"`).join('\n')
+    : '';
+
+  const sys = `You are a meticulous systematic review data extractor. Extract structured data accurately from the provided paper content. Write "Not reported" for any field not found in the text. Return a single valid JSON object with no additional text.`;
+
+  const usr = `Perform a full-text assessment for a systematic literature review.
+
+TOPIC: ${cfg.topic}
+INCLUSION: ${cfg.inclusion || 'see Step 1 screening criteria'}
+EXCLUSION: ${cfg.exclusion || 'see Step 1 screening criteria'}
+${cfg.extra ? 'NOTES: ' + cfg.extra : ''}
+
+PAPER:
+Title  : ${p.title  || 'N/A'}
+Authors: ${p.author || 'N/A'}
+Year   : ${p.year   || 'N/A'}
+DOI    : ${p.doi    || 'N/A'}
+Abstract: ${p.abstract || 'N/A'}
+
+${pdfText
+  ? `FULL TEXT (first 6 000 characters):\n${pdfText.substring(0, 6000)}`
+  : '[No PDF provided — extract from abstract only; note data may be limited]'}
+${fieldLines}
+
+Make a final inclusion decision based on full-text content (or abstract if no PDF).
+
+Respond ONLY with valid JSON:
+{
+  "final_decision": "INCLUDED" | "EXCLUDED",
+  "reason"        : "one sentence rationale"${extraCols.length ? ',\n  ' + extraCols.map(f => `"${f}": "extracted value or Not reported"`).join(',\n  ') : ''}
+}`;
+
+  const raw = await callAPI(cfg, sys, usr);
+  const j   = parseJSON(raw);
+  const res = {
+    _dec2    : j.final_decision === 'EXCLUDED' ? 'EXCLUDED' : 'INCLUDED',
+    _reason2 : j.reason || '',
+    _rel2    : p._rel || 0,
+  };
+  extraCols.forEach(f => { res[f] = j[f] || ''; });
+  return res;
+}
+
+// ══════════════════════════════════════════════════════
+// TABLE RENDERING
+// ══════════════════════════════════════════════════════
+const S1H = ['Decision','Reason','Relevancy','Type','Year','Author','Title','Journal','ISSN','DOI','URL','Abstract','Override'];
+const S2H = ['S1 Dec','S2 Dec','Reason (FT)','Rel.','Type','Year','Author','Title','Journal','ISSN','DOI','URL','Abstract','FT Status'];
+
+function buildS1Head() {
+  document.getElementById('tHead').innerHTML =
+    `<tr>${S1H.map(h=>`<th>${h}</th>`).join('')}</tr>`;
+}
+function buildS2Head() {
+  document.getElementById('tHead').innerHTML =
+    `<tr>${[...S2H,...extraCols].map(h=>`<th>${h}</th>`).join('')}</tr>`;
+}
+function renderS1Row(i,r){ upsert(i, s1cells(i,r)); }
+function renderS2Row(i,r){ upsert(i, s2cells(r)); }
+function upsert(i, html) {
+  const tb = document.getElementById('tBody');
+  const ex = document.getElementById(`row-${i}`);
+  const tr = document.createElement('tr'); tr.id=`row-${i}`; tr.innerHTML=html;
+  ex ? tb.replaceChild(tr,ex) : tb.appendChild(tr);
+}
+
+function s1cells(idx, r) {
+  const eff  = effDec(r), proc = eff==='PROCESSING';
+  const bc   = eff==='INCLUDED'?'bi':eff==='EXCLUDED'?'be':proc?'bp':'bn';
+  const dots = proc ? '' : `<div class="dots">${Array.from({length:5},(_,i)=>
+    `<span class="dot ${i<r._rel?'on':''}"></span>`).join('')}</div>`;
+  const ovr  = proc ? '' : `<select class="ov" onchange="overrideRow(${idx},this.value)">
+    <option value="">— override</option>
+    <option value="INCLUDED"       ${r._decOverride==='INCLUDED'?'selected':''}>✓ Include</option>
+    <option value="EXCLUDED"       ${r._decOverride==='EXCLUDED'?'selected':''}>✗ Exclude</option>
+    <option value="NOT ACCESSIBLE" ${r._decOverride==='NOT ACCESSIBLE'?'selected':''}>? N/A</option>
+  </select>`;
+  const doi  = r.doi ? `<a href="${x(r.doi.startsWith('http')?r.doi:'https://doi.org/'+r.doi)}" target="_blank" style="color:var(--blue);font-family:var(--mono);font-size:11px;text-decoration:none;font-weight:500">${x(r.doi).substring(0,24)}${r.doi.length>24?'…':''}</a>` : '';
+  const url  = r.url ? `<a href="${x(r.url)}" target="_blank" style="color:var(--violet);text-decoration:none">🔗</a>` : '';
+  return [
+    `<td><span class="badge ${bc}">${proc?'● ANALYZING':x(eff)}</span></td>`,
+    `<td><div class="ct" style="color:var(--ink3);font-size:12.5px">${x(r._reason||'')}</div></td>`,
+    `<td>${dots}</td>`,
+    `<td><div class="ct">${x(r.type||'')}</div></td>`,
+    `<td style="white-space:nowrap;font-weight:500">${x(r.year||'')}</td>`,
+    `<td><div class="ct">${x(r.author||'')}</div></td>`,
+    `<td><div class="ct" style="font-weight:500">${x(r.title||r.reference||'')}</div></td>`,
+    `<td><div class="ct">${x(r.journal||'')}</div></td>`,
+    `<td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${x(r.issn||'')}</td>`,
+    `<td>${doi}</td>`,
+    `<td>${url}</td>`,
+    `<td><div class="ct" style="color:var(--ink3);font-size:12px">${x((r.abstract||'').substring(0,200))}${(r.abstract||'').length>200?'…':''}</div></td>`,
+    `<td>${ovr}</td>`,
+  ].join('');
+}
+
+function s2cells(r) {
+  const s1  = effDec(r);
+  const s1c = s1==='INCLUDED'?'bi':s1==='EXCLUDED'?'be':'bn';
+  const ft  = r._ftStatus;
+  const s2d = r._dec2;
+
+  const s2b = ft==='PROCESSING' ? `<span class="badge bp">● REVIEWING</span>`
+    : ft==='SKIPPED'  ? `<span style="color:var(--ink4);font-family:var(--mono);font-size:10px">—</span>`
+    : ft==='ERROR'    ? `<span class="badge bn">ERROR</span>`
+    : s2d ? `<span class="badge ${s2d==='INCLUDED'?'bi':'be'}">${x(s2d)}</span>`
+    : `<span style="color:var(--ink4);font-family:var(--mono);font-size:10px">—</span>`;
+
+  const ftb = {
+    DONE      :`<span style="color:var(--green);font-family:var(--mono);font-size:10px;font-weight:600">✓ DONE</span>`,
+    PROCESSING:`<span class="badge bp" style="font-size:9px">⏳</span>`,
+    SKIPPED   :`<span style="color:var(--ink4);font-family:var(--mono);font-size:10px">SKIPPED</span>`,
+    PENDING   :`<span style="color:var(--ink3);font-family:var(--mono);font-size:10px">PENDING</span>`,
+    ERROR     :`<span style="color:var(--red);font-family:var(--mono);font-size:10px;font-weight:600">ERROR</span>`,
+  }[ft] || '';
+
+  const rel  = r._rel2||r._rel||0;
+  const dots = `<div class="dots">${Array.from({length:5},(_,i)=>`<span class="dot ${i<rel?'on':''}"></span>`).join('')}</div>`;
+  const doi  = r.doi ? `<a href="${x(r.doi.startsWith('http')?r.doi:'https://doi.org/'+r.doi)}" target="_blank" style="color:var(--blue);font-family:var(--mono);font-size:11px;text-decoration:none;font-weight:500">${x(r.doi).substring(0,22)}${r.doi.length>22?'…':''}</a>` : '';
+
+  return [
+    `<td><span class="badge ${s1c}">${x(s1)}</span></td>`,
+    `<td>${s2b}</td>`,
+    `<td><div class="ct" style="color:var(--ink3);font-size:12.5px">${x(r._reason2||r._reason||'')}</div></td>`,
+    `<td>${dots}</td>`,
+    `<td><div class="ct">${x(r.type||'')}</div></td>`,
+    `<td style="white-space:nowrap;font-weight:500">${x(r.year||'')}</td>`,
+    `<td><div class="ct">${x(r.author||'')}</div></td>`,
+    `<td><div class="ct" style="font-weight:500">${x(r.title||r.reference||'')}</div></td>`,
+    `<td><div class="ct">${x(r.journal||'')}</div></td>`,
+    `<td style="font-family:var(--mono);font-size:11px;color:var(--ink3)">${x(r.issn||'')}</td>`,
+    `<td>${doi}</td>`,
+    `<td>${r.url?`<a href="${x(r.url)}" target="_blank" style="color:var(--violet);text-decoration:none">🔗</a>`:''}</td>`,
+    `<td><div class="ct" style="color:var(--ink3);font-size:12px">${x((r.abstract||'').substring(0,160))}…</div></td>`,
+    `<td>${ftb}</td>`,
+    ...extraCols.map(c=>`<td><div class="ct">${x(r[c]||'')}</div></td>`),
+  ].join('');
+}
+
+function overrideRow(idx, val) {
+  s1Results[idx]._decOverride = val || undefined;
+  renderS1Row(idx, s1Results[idx]);
+  updateStats(s1Results);
+  document.getElementById('gate-i').textContent = s1Results.filter(r=>effDec(r)==='INCLUDED').length;
+  document.getElementById('gate-e').textContent = s1Results.filter(r=>effDec(r)==='EXCLUDED').length;
+  document.getElementById('gate-n').textContent = s1Results.filter(r=>effDec(r)==='NOT ACCESSIBLE').length;
+}
+
+// ══════════════════════════════════════════════════════
+// COMPARISON VIEW
+// ══════════════════════════════════════════════════════
+function showCmp(stage) {
+  const runs  = savedRuns.filter(r => r.stage === stage);
+  const wrap  = document.getElementById('cvWrap');
+  const title = document.getElementById('cvTitle');
+  const tags  = document.getElementById('cvTags');
+
+  if (!runs.length) {
+    wrap.innerHTML = `<div class="cv-empty"><div class="ico">⊞</div><h3>No ${stage==='s1'?'Step 1':'Step 2'} Runs</h3><p>Complete at least one run to see results here.</p></div>`;
+    title.textContent = 'No runs available'; tags.innerHTML = ''; return;
+  }
+
+  title.textContent = stage==='s1'
+    ? 'Step 1 · Abstract Screening Comparison'
+    : 'Step 2 · Full-Text Review Comparison';
+  tags.innerHTML = runs.map(r => `<span class="rtag ${stage}">${x(r.name)}</span>`).join('');
+
+  // Union paper map keyed by DOI or title
+  const pm = {};
+  runs.forEach(run => run.results.forEach(p => {
+    const k = (p.doi||p.title||p.reference||'').trim(); if (!k) return;
+    if (!pm[k]) pm[k] = { title:p.title||p.reference||k, doi:p.doi||'', author:p.author||'', year:p.year||'' };
+  }));
+
+  const getDec = (run, k) => {
+    const p = run.results.find(p2 => (p2.doi||p2.title||p2.reference||'').trim()===k);
+    if (!p) return null;
+    return stage==='s2' ? (p._dec2||effDec(p)) : effDec(p);
+  };
+
+  const agrClass = decs => {
+    const v = decs.filter(Boolean);
+    if (!v.length) return null;
+    const u = [...new Set(v)];
+    if (u.length===1) return 'ag';
+    if (v.some(d=>d==='INCLUDED') && v.some(d=>d==='EXCLUDED')) return 'cf';
+    return 'pt';
+  };
+
+  const decCell = d => {
+    if (!d) return `<span class="cb cx">—</span>`;
+    return `<span class="cb ${d==='INCLUDED'?'ci':d==='EXCLUDED'?'ce':'cn'}">${d==='INCLUDED'?'✓ INC':d==='EXCLUDED'?'✗ EXC':'? N/A'}</span>`;
+  };
+  const agrCell = ag => ag ? `<span class="ab ${ag}">${ag==='ag'?'AGREE':ag==='pt'?'PARTIAL':'CONFLICT'}</span>` : '';
+
+  const thRuns = runs.map(r =>
+    `<th class="rc">${x(r.name)}<br><span style="font-size:9px;color:var(--ink4);font-weight:400">${x(r.model)}</span></th>`
+  ).join('');
+
+  const rows = Object.keys(pm).map(k => {
+    const info = pm[k];
+    const decs = runs.map(r => getDec(r,k));
+    const ag   = agrClass(decs);
+    const doiLink = info.doi
+      ? `<a href="${x(info.doi.startsWith('http')?info.doi:'https://doi.org/'+info.doi)}" target="_blank" style="color:var(--blue);font-family:var(--mono);font-size:10px;text-decoration:none">${x(info.doi).substring(0,24)}${info.doi.length>24?'…':''}</a>` : '—';
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:11px;font-weight:500;white-space:nowrap">${x(info.year)}</td>
+      <td><div class="ct">${x(info.author)}</div></td>
+      <td><div class="ct" style="font-weight:500">${x(info.title)}</div></td>
+      <td style="min-width:90px">${doiLink}</td>
+      ${decs.map(d=>`<td class="rc">${decCell(d)}</td>`).join('')}
+      <td class="rc">${agrCell(ag)}</td>
+    </tr>`;
+  }).join('');
+
+  wrap.innerHTML = `<table class="cv-t">
+    <thead><tr>
+      <th style="min-width:52px">Year</th>
+      <th style="min-width:140px">Author</th>
+      <th style="min-width:240px">Title</th>
+      <th style="min-width:100px">DOI</th>
+      ${thRuns}
+      <th class="ac">Agreement</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`;
+
+  document.getElementById('stabs').classList.add('on');
+  switchTab('c');
+}
+
+// ══════════════════════════════════════════════════════
+// DISPLAY HELPERS
+// ══════════════════════════════════════════════════════
+function showEmpty() {
+  document.getElementById('emptyState').style.display = 'flex';
+  document.getElementById('gateWrap').style.display   = 'none';
+  document.getElementById('tableWrap').style.display  = 'none';
+  document.getElementById('spill').style.display = 'none';
+}
+function showGate() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('gateWrap').style.display   = 'flex';
+  document.getElementById('tableWrap').style.display  = 'none';
+  const i = s1Results.filter(r=>effDec(r)==='INCLUDED').length;
+  document.getElementById('gate-i').textContent = i;
+  document.getElementById('gate-e').textContent = s1Results.filter(r=>effDec(r)==='EXCLUDED').length;
+  document.getElementById('gate-n').textContent = s1Results.filter(r=>effDec(r)==='NOT ACCESSIBLE').length;
+}
+function showTableView() {
+  document.getElementById('emptyState').style.display = 'none';
+  document.getElementById('gateWrap').style.display   = 'none';
+  document.getElementById('tableWrap').style.display  = 'block';
+}
+function setSpill(text, stage) {
+  const el = document.getElementById('spill');
+  el.textContent = text; el.className = `spill ${stage}`; el.style.display = 'flex';
+}
+function updateStats(res) {
+  document.getElementById('st-tot').textContent = `● ${res.length} papers`;
+  document.getElementById('st-inc').textContent = `✓ ${res.filter(r=>effDec(r)==='INCLUDED').length} included`;
+  document.getElementById('st-exc').textContent = `✗ ${res.filter(r=>effDec(r)==='EXCLUDED').length} excluded`;
+  document.getElementById('st-na').textContent  = `? ${res.filter(r=>effDec(r)==='NOT ACCESSIBLE').length} n/a`;
+}
+const effDec = r => r._decOverride || r._dec;
+function showProg(on, stage='s1') {
+  document.getElementById('pw').classList.toggle('on', on);
+  document.getElementById('pbar').className = `pb ${stage}`;
+}
+function setProgress(done, total, label, stage='s1') {
+  const pct = total > 0 ? Math.round(done/total*100) : 0;
+  document.getElementById('pbar').style.width = pct+'%';
+  document.getElementById('pcount').textContent = `${done} / ${total}`;
+  document.getElementById('plabel').textContent = (label||'').substring(0,70);
+  document.getElementById('pbar').className = `pb ${stage}`;
+}
+function showLog(on) { document.getElementById('lw').classList.toggle('on', on); }
+function log(type, msg) {
+  const wrap = document.getElementById('lw');
+  const ts   = new Date().toTimeString().substring(0,8);
+  const d    = document.createElement('div'); d.className=`ll ${type}`;
+  d.innerHTML = `<span class="lt">[${ts}]</span><span class="lm">${x(msg)}</span>`;
+  wrap.appendChild(d); wrap.scrollTop = wrap.scrollHeight;
+}
+
+// ══════════════════════════════════════════════════════
+// EXPORTS
+// ══════════════════════════════════════════════════════
+function exportS1() {
+  if (!s1Results.length) { toast('No Step 1 results yet.','err'); return; }
+  const hdr = ['Decision','Override','Reason','Relevancy','Type','Year','Author','Title','Journal','ISSN','DOI','URL','Abstract'];
+  const rows = s1Results.map(r => [
+    r._dec, r._decOverride||'', r._reason, r._rel,
+    r.type, r.year, r.author, r.title||r.reference,
+    r.journal, r.issn, r.doi, r.url, r.abstract
+  ]);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([hdr,...rows]);
+  ws['!cols'] = [14,12,42,10,16,8,28,56,30,12,38,38,80].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Abstract Screening');
+
+  const sum = [
+    ['SLR·AI — Step 1: Abstract Screening Results'],
+    ['Generated:', new Date().toLocaleString()],[],
+    ['Total papers:', s1Results.length],
+    ['Included:', s1Results.filter(r=>effDec(r)==='INCLUDED').length],
+    ['Excluded:', s1Results.filter(r=>effDec(r)==='EXCLUDED').length],
+    ['Not Accessible:', s1Results.filter(r=>effDec(r)==='NOT ACCESSIBLE').length],
+    ['Manual overrides applied:', s1Results.filter(r=>r._decOverride).length],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sum), 'Summary');
+  XLSX.writeFile(wb, `SLR_Step1_${today()}.xlsx`);
+  toast('Step 1 Excel exported','ok');
+}
+
+function exportFinal() {
+  const src = s2Results.length ? s2Results : s1Results;
+  if (!src.length) { toast('No results to export.','err'); return; }
+  const hdr = ['S1 Decision','S2 Decision','Reason','Relevancy','Type','Year','Author','Title','Journal','ISSN','DOI','URL','Abstract',...extraCols];
+  const rows = src.map(r => [
+    effDec(r), r._dec2||'', r._reason2||r._reason, r._rel2||r._rel,
+    r.type, r.year, r.author, r.title||r.reference,
+    r.journal, r.issn, r.doi, r.url, r.abstract,
+    ...extraCols.map(c=>r[c]||'')
+  ]);
+  const wb = XLSX.utils.book_new();
+  const ws = XLSX.utils.aoa_to_sheet([hdr,...rows]);
+  ws['!cols'] = [14,14,42,10,16,8,28,56,30,12,38,38,80,...extraCols.map(()=>28)].map(w=>({wch:w}));
+  XLSX.utils.book_append_sheet(wb, ws, 'Full Review Results');
+
+  const finInc = src.filter(r=>(r._dec2||effDec(r))==='INCLUDED');
+  if (finInc.length) {
+    const ih = ['Author','Year','Title','Journal','DOI',...extraCols];
+    const ir = finInc.map(r=>[r.author,r.year,r.title,r.journal,r.doi,...extraCols.map(c=>r[c]||'')]);
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([ih,...ir]), 'Included Papers');
+  }
+
+  const sdata = [
+    ['SLR·AI — Final Systematic Review Results'],
+    ['Generated:', new Date().toLocaleString()],[],
+    ['Total screened:', src.length],
+    ['Step 1 Included:', src.filter(r=>effDec(r)==='INCLUDED').length],
+    ['Final Included (Step 2):', src.filter(r=>(r._dec2||effDec(r))==='INCLUDED').length],
+    ['Final Excluded:', src.filter(r=>(r._dec2||effDec(r))==='EXCLUDED').length],
+    ['Not Accessible:', src.filter(r=>effDec(r)==='NOT ACCESSIBLE').length],
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sdata), 'Summary');
+  XLSX.writeFile(wb, `SLR_Final_${today()}.xlsx`);
+  toast('Final Excel exported','ok');
+}
+
+function exportCmp() {
+  if (!savedRuns.length) { toast('No saved runs to compare.','err'); return; }
+  const wb = XLSX.utils.book_new();
+  ['s1','s2'].forEach(stage => {
+    const runs = savedRuns.filter(r=>r.stage===stage);
+    if (!runs.length) return;
+    const pm={};
+    runs.forEach(run=>run.results.forEach(p=>{
+      const k=(p.doi||p.title||p.reference||'').trim(); if(!k) return;
+      if(!pm[k]) pm[k]={title:p.title||p.reference||k,doi:p.doi||'',author:p.author||'',year:p.year||''};
+    }));
+    const hdr=['Year','Author','Title','DOI',...runs.map(r=>`${r.name} (${r.model})`),'Agreement'];
+    const rows=Object.keys(pm).map(k=>{
+      const info=pm[k];
+      const decs=runs.map(r=>{
+        const p=r.results.find(p2=>(p2.doi||p2.title||p2.reference||'').trim()===k);
+        if(!p) return '—';
+        return stage==='s2'?(p._dec2||effDec(p)):effDec(p);
+      });
+      const v=decs.filter(d=>d&&d!=='—');
+      const u=[...new Set(v)];
+      const ag=u.length===0?'—':u.length===1?'AGREE':v.some(d=>d==='INCLUDED')&&v.some(d=>d==='EXCLUDED')?'CONFLICT':'PARTIAL';
+      return [info.year,info.author,info.title,info.doi,...decs,ag];
+    });
+    XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([hdr,...rows]),stage==='s1'?'S1 Comparison':'S2 Comparison');
+  });
+  XLSX.writeFile(wb,`SLR_Comparison_${today()}.xlsx`);
+  toast('Comparison Excel exported','ok');
+}
+
+const today = () => new Date().toISOString().substring(0,10);
+
+// ══════════════════════════════════════════════════════
+// FILE HANDLING
+// ══════════════════════════════════════════════════════
+async function handleExcel(input) {
+  const f = input.files[0]; if (!f) return;
+  allPapers = await parseExcel(f);
+  document.getElementById('excelChips').innerHTML = '';
+  addChip('excelChips', `✓ ${f.name} — ${allPapers.length} papers`, () => { allPapers=[]; input.value=''; });
+  toast(`Loaded ${allPapers.length} references from ${f.name}`,'ok');
+}
+
+function handlePDFs(input) {
+  Array.from(input.files).forEach(f => {
+    pdfMap[f.name] = f;
+    addChip('pdfChips', f.name, () => delete pdfMap[f.name]);
+  });
+  toast(`${Object.keys(pdfMap).length} PDF(s) ready`,'ok');
+}
+
+function addChip(cid, label, onRemove) {
+  const c = document.createElement('div'); c.className='chip';
+  c.innerHTML = `<span class="cn">${x(label)}</span><button onclick="this.parentElement.remove();(${onRemove.toString()})()">✕</button>`;
+  document.getElementById(cid).appendChild(c);
+}
+
+async function parseExcel(file) {
+  return new Promise(resolve => {
+    const rd = new FileReader();
+    rd.onload = e => {
+      try {
+        const wb  = XLSX.read(e.target.result, {type:'binary'});
+        const ws  = wb.Sheets[wb.SheetNames[0]];
+        const raw = XLSX.utils.sheet_to_json(ws, {header:1});
+        if (raw.length<2) { resolve([]); return; }
+        const hdrs = raw[0].map(h=>String(h||'').toLowerCase().trim());
+        const fi = keys => hdrs.findIndex(h=>keys.some(k=>h.includes(k)));
+        const ix = {
+          reference: fi(['reference','apa','citation']),
+          doi:       fi(['doi']),
+          title:     fi(['title']),
+          author:    fi(['author','creator']),
+          year:      fi(['year','date','pub year']),
+          abstract:  fi(['abstract']),
+          journal:   fi(['journal','publication','source','publication title']),
+          url:       fi(['url','link']),
+          issn:      fi(['issn']),
+          type:      fi(['type','item type','item']),
+        };
+        const g = (row,k) => ix[k]>=0 ? String(row[ix[k]]||'') : '';
+        resolve(raw.slice(1)
+          .map(row=>({
+            reference:g(row,'reference'), doi:g(row,'doi'), title:g(row,'title'),
+            author:g(row,'author'), year:g(row,'year'), abstract:g(row,'abstract'),
+            journal:g(row,'journal'), url:g(row,'url'), issn:g(row,'issn'), type:g(row,'type'),
+          }))
+          .filter(r=>r.reference||r.doi||r.title));
+      } catch(err) { toast('Excel parse error: '+err.message,'err'); resolve([]); }
+    };
+    rd.readAsBinaryString(file);
+  });
+}
+
+function parsePasted(text) {
+  return text.split('\n').map(l=>l.trim()).filter(l=>l.length>10).map(line=>{
+    const dm = line.match(/https?:\/\/doi\.org\/\S+/i) || line.match(/\bdoi:\s*(\S+)/i);
+    const ym = line.match(/\((\d{4})\)/);
+    const doi = dm ? (dm[1]||dm[0]).replace(/[.,;]+$/,'') : '';
+    return {
+      reference:line, doi, title:'', author:'',
+      year:ym?ym[1]:'', abstract:'', journal:'',
+      url:doi?'https://doi.org/'+doi:'', issn:'', type:'',
+    };
+  });
+}
+
+// Real PDF text extraction using PDF.js
+async function extractPdfText(paper) {
+  const key = Object.keys(pdfMap).find(name => {
+    const n = name.toLowerCase().replace(/[^a-z0-9]/g,'');
+    if (paper.doi) {
+      const slug = paper.doi.replace(/[^a-z0-9]/gi,'').toLowerCase().substring(0,16);
+      if (n.includes(slug)) return true;
+    }
+    if (paper.title) {
+      const frag = paper.title.toLowerCase().substring(0,22).replace(/[^a-z0-9]/g,'');
+      if (frag.length > 6 && n.includes(frag)) return true;
+    }
+    return false;
+  });
+
+  if (!key || !window.pdfjsLib) return null;
+
+  try {
+    const buf = await pdfMap[key].arrayBuffer();
+    const pdf = await pdfjsLib.getDocument({data:buf}).promise;
+    const maxPages = Math.min(pdf.numPages, 15);
+    let text = '';
+    for (let pg=1; pg<=maxPages; pg++) {
+      const page    = await pdf.getPage(pg);
+      const content = await page.getTextContent();
+      text += content.items.map(i=>i.str).join(' ') + '\n';
+    }
+    return text.trim() || null;
+  } catch (err) {
+    log('warn', `PDF parse error for "${key}": ${err.message.substring(0,60)}`);
+    return null;
+  }
+}
+
+// ══════════════════════════════════════════════════════
+// API + RETRY
+// ══════════════════════════════════════════════════════
+async function callAPI(cfg, sys, usr) {
+  const {provider,model,apiKey} = cfg;
+  let url, headers, body;
+
+  if (provider === 'anthropic') {
+    url  = 'https://api.anthropic.com/v1/messages';
+    headers = {
+      'Content-Type':'application/json',
+      'x-api-key':apiKey,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true',
+    };
+    body = JSON.stringify({model, max_tokens:2048, system:sys, messages:[{role:'user',content:usr}]});
+  } else if (provider === 'openai') {
+    url  = 'https://api.openai.com/v1/chat/completions';
+    headers = {'Content-Type':'application/json','Authorization':'Bearer '+apiKey};
+    body = JSON.stringify({model, max_tokens:2048, messages:[{role:'system',content:sys},{role:'user',content:usr}]});
+  } else { // gemini
+    url  = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+    headers = {'Content-Type':'application/json'};
+    body = JSON.stringify({
+      contents:[{parts:[{text:sys+'\n\n'+usr}]}],
+      generationConfig:{maxOutputTokens:2048},
+    });
+  }
+
+  const resp = await fetch(url, {method:'POST', headers, body});
+  if (!resp.ok) {
+    const txt = await resp.text();
+    throw new Error(`HTTP ${resp.status}: ${txt.substring(0,180)}`);
+  }
+  const data = await resp.json();
+  if (provider==='anthropic') return data.content[0].text;
+  if (provider==='openai')    return data.choices[0].message.content;
+  return data.candidates[0].content.parts[0].text;
+}
+
+async function withRetry(fn, retries=2, baseDelay=1500) {
+  for (let attempt=0; attempt<=retries; attempt++) {
+    try { return await fn(); }
+    catch (err) {
+      if (attempt===retries) throw err;
+      const delay = baseDelay * Math.pow(1.8, attempt);
+      log('warn', `Retry ${attempt+1}/${retries} in ${Math.round(delay/1000)}s — ${err.message.substring(0,50)}`);
+      await sleep(delay);
+    }
+  }
+}
+
+function parseJSON(raw) {
+  const m = raw.match(/\{[\s\S]*\}/);
+  if (!m) throw new Error('No JSON found in API response');
+  return JSON.parse(m[0]);
+}
+
+const x    = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+const sleep = ms => new Promise(r => setTimeout(r,ms));
+
+// ══════════════════════════════════════════════════════
+// UTILITIES
+// ══════════════════════════════════════════════════════
+function updateModels() {
+  const p = document.getElementById('llmProvider').value;
+  const opts = {
+    anthropic: ['claude-opus-4-6','claude-sonnet-4-6','claude-haiku-4-5-20251001'],
+    openai:    ['gpt-4o','gpt-4-turbo','gpt-4o-mini'],
+    gemini:    ['gemini-2.0-flash','gemini-1.5-pro','gemini-1.5-flash'],
+  };
+  document.getElementById('llmModel').innerHTML =
+    (opts[p]||[]).map(m=>`<option value="${m}">${m}</option>`).join('');
+}
+
+function clearAll() {
+  if (isRunning) { toast('Cannot reset while a run is in progress.','warn'); return; }
+  if (!confirm('Reset everything? All papers, runs, and results will be cleared.')) return;
+  allPapers=[]; s1Results=[]; s2Results=[]; pdfMap={}; extraCols=[]; savedRuns=[]; runCounter=0;
+  document.getElementById('tHead').innerHTML='';
+  document.getElementById('tBody').innerHTML='';
+  document.getElementById('excelChips').innerHTML='';
+  document.getElementById('pdfChips').innerHTML='';
+  document.getElementById('lw').innerHTML='';
+  document.getElementById('stabs').classList.remove('on');
+  showProg(false); showLog(false);
+  navTo('setup'); showEmpty(); updateStats([]);
+  updateCmpSidebar();
+  ['nav-s1','nav-s2','nav-cmp'].forEach(id=>document.getElementById(id).classList.add('locked'));
+}
+
+function closeModal() { document.getElementById('apiModal').classList.remove('on'); }
+
+function toast(msg, type='') {
+  const wrap = document.getElementById('toasts');
+  const el   = document.createElement('div'); el.className=`toast ${type}`; el.textContent=msg;
+  wrap.appendChild(el);
+  setTimeout(()=>{
+    el.style.cssText='opacity:0;transform:translateY(8px);transition:.3s;';
+    setTimeout(()=>el.remove(), 320);
+  }, 3400);
+}
+
+// Drag-and-drop
+['excelZone','pdfZone'].forEach(id => {
+  const el = document.getElementById(id); if (!el) return;
+  el.addEventListener('dragover', e=>{e.preventDefault();el.classList.add('drag');});
+  el.addEventListener('dragleave', ()=>el.classList.remove('drag'));
+  el.addEventListener('drop', ()=>el.classList.remove('drag'));
+});
+</script>
+</body>
+</html>

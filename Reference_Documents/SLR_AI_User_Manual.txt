@@ -1,0 +1,255 @@
+
+SLR·AI
+Systematic Literature Review Assistant
+User Manual  ·  v0.3
+
+Two-Stage PRISMA-Compliant AI Screening
+Abstract Screening  ›  Gate Review  ›  Full-Text Extraction  ›  Multi-Run Comparison
+
+1. Introduction
+SLR·AI is a browser-based tool that uses large language models (LLMs) to assist researchers in conducting systematic literature reviews (SLRs). It implements a two-stage PRISMA-compliant screening pipeline, allowing researchers to screen large reference lists efficiently, extract structured data from full texts, and compare AI decisions across multiple models or prompt configurations.
+
+1.1  What SLR·AI Does
+	•	Screens titles and abstracts automatically using configurable inclusion and exclusion criteria (Step 1).
+	•	Extracts structured data from full texts of included papers (Step 2).
+	•	Saves every AI run independently so you can compare decisions across different models or prompts.
+	•	Provides a manual override mechanism to correct AI decisions before advancing to the next stage.
+	•	Exports results to Excel at each stage for audit trail and PRISMA flow diagram generation.
+
+1.2  Supported AI Providers
+Anthropic
+claude-opus-4-6, claude-sonnet-4-6, claude-haiku-4-5
+OpenAI
+gpt-4o, gpt-4-turbo, gpt-4o-mini
+Google
+gemini-2.0-flash, gemini-1.5-pro, gemini-1.5-flash
+
+📌  Your API key is never stored — it exists only in your browser session and is never sent to any server other than the AI provider's own API.
+
+2. Workflow Overview
+The tool guides you through five stages accessible via the top navigation bar:
+
+S  Setup
+Configure API credentials, research parameters, and upload references.
+1  Abstract Screening
+AI screens all papers using title, abstract, and metadata only. Results stream in real time.
+⊕  Gate
+Review Step 1 results, apply manual overrides, then proceed or run again with a different model.
+2  Full-Text Review
+AI extracts structured data from full texts of included papers only.
+⊞  Comparison
+Compare inclusion/exclusion decisions across all saved runs side by side.
+
+📌  Each time you click "Run," results are saved as an independent named run. You can run Step 1 three times with three different models, then compare all three decisions in the Comparison view.
+
+3. Screen 1 — Setup
+The Setup screen is the starting point for every review. Complete all fields before clicking Begin Abstract Screening.
+
+
+Figure 1: Setup screen — API configuration (left) and research parameters (right).
+3.1  Left Panel: API Configuration
+Provider & Model
+Select your AI provider from the dropdown, then choose a specific model. The model list updates automatically. Use a more capable model (e.g. claude-opus-4-6) for smaller reference lists where cost is less of a concern, or a faster model (claude-haiku-4-5) for large batches.
+API Key
+Paste your API key. The key is stored only in your browser's memory for the current session and is cleared when you close or refresh the page.
+Run Name
+Give this run a descriptive label (e.g. "Claude Sonnet Run 1" or "GPT-4o Strict Criteria"). This name appears in the Comparison view, saved run lists, and exported Excel files. Choose a name that clearly identifies what changed between runs.
+
+3.2  Right Panel: Research Parameters
+1 — Research Topic
+Write a clear, focused description of your review topic. This is the primary context the AI uses to make inclusion decisions. Be specific enough that the AI can distinguish relevant from irrelevant papers.
+2 — Inclusion Criteria
+List the criteria a paper must meet to be included. Examples: study design (RCT, cohort), population (human adults), language (English), date range (2015–2025), outcome type (quantitative).
+3 — Exclusion Criteria
+List reasons to exclude a paper. Examples: conference abstracts only, n < 50 participants, pediatric or veterinary studies, non-English, grey literature.
+4 — Extraction Fields (Step 2 only)
+Enter a comma-separated list of data fields you want the AI to extract during full-text review (e.g. "Study design, Sample size, AI system used, AUC, Primary outcome"). These become columns in the Step 2 results table.
+5 — Extra Context (optional)
+Provide any additional instructions that should guide AI decisions but do not fit neatly into inclusion/exclusion criteria. Examples: "Treat systematic reviews without meta-analysis as excluded," or "Focus on prospective designs."
+
+3.3  Reference Upload
+SLR·AI accepts references in two ways:
+	•	Excel / CSV file — Upload a spreadsheet with columns for Title, Author, Year, Abstract, DOI, Journal, URL, ISSN, Item Type. Column names are matched flexibly (case-insensitive).
+	•	Paste APA references — Paste plain-text APA-formatted references into the text area. The tool extracts DOIs and years automatically.
+📌  Both methods can be combined. Upload a file and also paste additional references — they are merged into a single list.
+
+When your reference file is loaded, a green confirmation bar appears showing the filename and paper count (e.g. "✓ references.xlsx — 47 papers loaded"). Once you see this, click Begin Abstract Screening.
+
+4. Screen 2 — Abstract Screening (Running)
+Once screening begins, you are taken to the Step 1 view. The AI processes each paper sequentially, and results appear row by row in the results table as they are returned.
+
+
+Figure 2: Step 1 running — sidebar (left), real-time progress and log (center-top), and results table (center-bottom).
+4.1  Sidebar
+The left sidebar shows the current run's metadata: total paper count, model name, run name, and how many runs have been saved so far. The Run Again button becomes active after the run completes, allowing you to start a fresh run with a different model immediately.
+4.2  Progress Bar & Log
+The progress bar tracks how many papers have been processed. The log console beneath it shows timestamped entries for each paper as the AI decides, making it easy to spot API errors or unexpected decisions in real time.
+4.3  Results Table
+Each row represents one paper. Columns include:
+	•	Decision — INCLUDED, EXCLUDED, or NOT ACCESSIBLE (shown as colored badges).
+	•	Reason — the AI's justification for its decision.
+	•	Relevancy — a 1–5 score shown as purple dots.
+	•	Metadata — Item Type, Year, Author, Title, Publication, ISSN, DOI, URL, Abstract.
+	•	Override — a dropdown that lets you manually change the AI's decision before proceeding to Step 2.
+
+4.4  Decision Types
+✓ INCLUDED
+Paper meets all inclusion criteria and none of the exclusion criteria.
+✗ EXCLUDED
+Paper was screened but fails at least one inclusion criterion or meets an exclusion criterion.
+? NOT ACCESSIBLE
+No abstract and insufficient metadata to make a decision. Requires manual review.
+● ANALYZING
+API call in progress. The row will update when the response arrives.
+
+4.5  Manual Override
+Every row has an Override dropdown. Use it to change the AI's decision if you disagree. Overrides are applied immediately — the decision badge updates and the stat counters at the top recalculate. Overrides are respected when determining which papers proceed to Step 2.
+📌  Step 1 uses only the title, abstract, authors, year, journal, and DOI. It never receives full-text content. This mirrors the abstract screening phase in a human-conducted PRISMA review.
+
+5. Screen 3 — Gate: Step 1 Complete
+When Step 1 finishes, the Gate screen appears in the main panel. This is a mandatory checkpoint before full-text review begins.
+
+
+Figure 3: Gate screen — Step 1 summary with included/excluded/N/A counts and action buttons.
+5.1  Summary Card
+The three large numbers show how many papers were included, excluded, and marked not accessible across the current run (after any manual overrides). These numbers form the basis of your PRISMA flow diagram.
+5.2  Actions
+Proceed to Full-Text Review
+Advances to Step 2 using the current Step 1 results (with overrides applied).
+Export Step 1 Excel
+Downloads a two-sheet Excel file: one with all paper decisions, one with summary statistics.
+View Full Results Table
+Returns to the results table view without advancing stages.
+Run Again (sidebar)
+Starts a new run from scratch with the current or a different model/run name. The previous run is saved and appears in the Saved S1 Runs list.
+
+5.3  Saved Runs List
+Once a run is complete, it appears as a card in the Saved S1 Runs list in the sidebar, showing: run name, model, timestamp, and a badge summary (included / excluded / N/A counts). Multiple saved runs enable the Comparison view. Delete any run by clicking the × button on its card.
+📌  You can run Step 1 multiple times before proceeding to Step 2. For example: run with Claude Sonnet, run again with GPT-4o, compare decisions in the Comparison tab, then decide which run's results to use as the basis for Step 2.
+
+6. Screen 4 — Full-Text Review (Step 2)
+Step 2 processes only the papers that were marked INCLUDED in Step 1 (after overrides). Papers marked EXCLUDED or NOT ACCESSIBLE are shown as SKIPPED in the results table and are not sent to the AI.
+
+
+Figure 4: Step 2 running — DONE rows show extracted data fields (Study Design, Sample Size, AI System, AUC). SKIPPED rows remain grayed out.
+6.1  PDF Upload
+Upload PDF files for best extraction quality. Name each PDF using one of the following conventions so the tool can match it to the correct paper:
+	•	By DOI — replace "/" and "." with underscores: 10.1056_NEJMoa2023.pdf
+	•	By title — include the first 20+ characters of the paper title: Ahmad2023_AI_triage.pdf
+PDFs are matched on a best-effort basis. If no PDF is found for an included paper, the AI extracts what it can from the abstract alone and marks fields as "Not reported."
+
+6.2  Results Table Columns
+The Step 2 table includes all Step 1 columns plus:
+S1 DEC
+The Step 1 decision (from abstract screening).
+S2 DEC
+The Step 2 final decision (INCLUDED or EXCLUDED based on full text).
+Reason (FT)
+The AI's rationale for the Step 2 decision.
+FT Status
+DONE, PENDING, REVIEWING, SKIPPED, or ERROR.
+Custom Fields
+One column per extraction field you defined in Setup (e.g. Study Design, AUC).
+
+6.3  FT Status Values
+✓ DONE
+Extraction complete. Data fields populated.
+● REVIEWING
+API call in progress.
+PENDING
+Queued — waiting for earlier papers to finish.
+— SKIPPED
+Paper was excluded or N/A in Step 1 — not processed.
+ERROR
+API call failed. Check the log console for details.
+
+6.4  Exporting Final Results
+The Export Final button downloads a three-sheet Excel file:
+	•	Full Review Results — all papers (both stages), all decisions and extracted fields.
+	•	Included Papers — only the finally included papers with clean metadata and extraction fields.
+	•	Summary — high-level counts for the PRISMA flow diagram.
+
+7. Screen 5 — Run Comparison
+The Comparison view displays all saved runs side by side in a matrix table. Each row is a paper; each column is a saved run. This view supports both Step 1 and Step 2 runs.
+
+
+Figure 5: Comparison view — three Step 1 runs (Claude Sonnet, Claude Opus, GPT-4o) compared. AGREE, PARTIAL, and CONFLICT badges highlight agreement patterns.
+7.1  Reading the Comparison Table
+For each paper (row), you can see the decision made by each AI run. The Agreement column on the right summarizes the pattern:
+AGREE (green)
+All runs made the same decision. High confidence — no further review needed for this paper.
+PARTIAL (amber)
+Most runs agree but one or more differ. Worth a closer look by a human reviewer.
+CONFLICT (red)
+Runs are split — e.g. one includes and one excludes. These papers require human adjudication.
+
+7.2  Switching Between Step 1 and Step 2
+Use the sidebar buttons to switch between the Step 1 comparison and the Step 2 comparison. The active comparison is shown at the top of the table alongside run tags.
+7.3  Exporting the Comparison
+The Export Comparison Excel button downloads a workbook with one sheet per stage (S1 Comparison and S2 Comparison). Each sheet contains Year, Author, Title, DOI, one column per run, and an Agreement column. This file is suitable for inter-rater reliability analysis.
+📌  The Comparison view is also useful as a sensitivity analysis: run the same criteria with different models to see how much the decision varies by model choice.
+
+8. Tips & Best Practices
+8.1  Writing Good Criteria
+	•	Be specific and measurable. "Peer-reviewed studies with n ≥ 50" is better than "adequate sample size."
+	•	List criteria in order of importance. The AI considers all criteria simultaneously but clearer ordering helps.
+	•	Use the Extra Context field for edge cases or protocol-specific decisions.
+	•	Avoid redundancy between inclusion and exclusion criteria.
+
+8.2  Choosing Models
+	•	Use a powerful model (Opus, GPT-4o) for difficult, nuanced topics with overlapping criteria.
+	•	Use a faster model (Haiku, GPT-4o-mini) for large batches (200+ papers) where speed matters.
+	•	Run with at least two different models and compare to assess decision stability.
+
+8.3  Managing Runs
+	•	Give every run a descriptive name before clicking Run — e.g. "Strict criteria v1" or "Gemini Pro baseline."
+	•	Delete runs you no longer need via the × button in the sidebar to keep the Comparison view clean.
+	•	Export Step 1 Excel before running Step 2 so you have an independent audit trail for each stage.
+
+8.4  NOT ACCESSIBLE Papers
+Papers with no abstract and no useful metadata receive a NOT ACCESSIBLE decision. These should be manually reviewed. Use the Override dropdown to reclassify them after looking up the paper online.
+
+8.5  API Errors
+If the log shows API errors (red lines), check: (1) your API key is correct and has sufficient credit, (2) you are not rate-limited by your provider. The tool does not auto-retry failed rows — use the Run Again button and check if errors persist.
+
+9. Glossary
+Abstract Screening
+Step 1. AI evaluates each paper using only its metadata and abstract.
+Extraction Fields
+User-defined data columns that the AI extracts during Step 2 (e.g. sample size, AUC).
+Full-Text Review
+Step 2. AI reads the full paper text (via uploaded PDF) to make a final inclusion decision and extract data.
+Gate
+The checkpoint between Step 1 and Step 2 where you review results and decide how to proceed.
+LLM
+Large Language Model — the AI system that reads and classifies papers.
+Manual Override
+A per-paper dropdown that lets the human reviewer change the AI's decision.
+NOT ACCESSIBLE
+Decision given when no abstract or metadata is available to screen a paper.
+PRISMA
+Preferred Reporting Items for Systematic Reviews and Meta-Analyses — a standard framework for conducting and reporting SLRs.
+Run
+A single execution of the AI screening pipeline. Each run is saved independently.
+SLR
+Systematic Literature Review — a rigorous, reproducible method of synthesizing published research.
+
+10. Quick-Start Checklist
+Use this checklist for each new systematic review:
+
+	•	Obtain an API key from your chosen provider (Anthropic, OpenAI, or Google).
+	•	Prepare your reference list as an Excel file with at minimum: Title, Author, Year, Abstract, DOI columns.
+	•	Open SLR·AI and enter your API key, model, and a descriptive run name.
+	•	Fill in Research Topic, Inclusion Criteria, and Exclusion Criteria.
+	•	List your data extraction fields (for Step 2).
+	•	Upload your reference file and click Begin Abstract Screening.
+	•	Wait for Step 1 to complete. Review the log and apply any manual overrides.
+	•	Export Step 1 Excel for your audit trail.
+	•	(Optional) Run Step 1 again with a different model and compare in the Comparison view.
+	•	Proceed to Full-Text Review from the Gate screen.
+	•	(Optional) Upload PDFs named by DOI or title for better extraction accuracy.
+	•	Wait for Step 2 to complete, then Export Final Excel.
+	•	Use the Comparison view to analyze inter-model agreement and identify papers needing human adjudication.
+
+
+SLR·AI  ·  User Manual  ·  v0.3

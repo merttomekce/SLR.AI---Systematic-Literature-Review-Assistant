@@ -50,6 +50,47 @@ export async function parseExcelFile(file: File): Promise<Paper[]> {
 }
 
 /**
+ * Parses raw text containing APA-formatted references (or similar).
+ * Attempts to extract DOIs and Years automatically.
+ */
+export function parseTextReferences(text: string): Paper[] {
+    if (!text.trim()) return [];
+
+    // Split by double line breaks or single line breaks if they look like separate references
+    // A simple heuristic is splitting by newlines, then filtering out empty lines.
+    const rawRefs = text.split(/\n\s*\n/).filter(r => r.trim().length > 0);
+
+    // If it's just one big block, maybe split by newline if we find multiple DOIs
+    // Let's stick to a simple block split for now. If no double newlines, try single newlines.
+    const refs = rawRefs.length > 1 ? rawRefs : text.split('\n').filter(r => r.trim().length > 10);
+
+    return refs.map((ref) => {
+        const cleanRef = ref.trim();
+
+        // Extract Year: looks for (YYYY)
+        const yearMatch = cleanRef.match(/\((19|20)\d{2}\)/);
+        const year = yearMatch ? yearMatch[0].replace(/[\(\)]/g, '') : undefined;
+
+        // Extract DOI: looks for doi.org/... or doi: ...
+        const doiMatch = cleanRef.match(/(?:https?:\/\/doi\.org\/|doi:\s*)(10\.\d{4,9}\/[-._;()/:A-Za-z0-9]+)/i);
+        const doi = doiMatch ? doiMatch[1] : undefined;
+
+        // Title: fallback to the first 100 characters of the reference
+        const titleMatch = cleanRef.match(/\)\.\s*(.*?)(?:\.|$)/);
+        const title = titleMatch ? titleMatch[1].trim() : cleanRef.substring(0, 100) + '...';
+
+        return {
+            id: doi || crypto.randomUUID(),
+            title,
+            year,
+            doi,
+            abstract: cleanRef, // Store the full reference here for the LLM
+        };
+    });
+}
+
+
+/**
  * Extracts text from a PDF file
  */
 export async function extractTextFromPDF(file: File): Promise<string> {

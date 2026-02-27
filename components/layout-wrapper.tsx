@@ -5,8 +5,8 @@ import { Header } from './header';
 
 interface LayoutWrapperProps {
   children: React.ReactNode;
-  headerTitle?: string;
-  headerDescription?: string;
+  headerTitle?: React.ReactNode;
+  headerDescription?: React.ReactNode;
 }
 
 export function LayoutWrapper({

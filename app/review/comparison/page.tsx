@@ -4,7 +4,8 @@ import { LayoutWrapper } from '@/components/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, CheckCircle2, AlertCircle, AlertTriangle } from 'lucide-react';
+import { Download, FileText, CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import Link from 'next/link';
 import { useReviewStore, Paper, Decision, ReviewRun } from '@/store/useReviewStore';
 import { exportToExcel } from '@/lib/fileParser';
@@ -94,24 +95,41 @@ export default function ComparisonPage() {
   return (
     <LayoutWrapper
       headerTitle="Run Comparison"
-      headerDescription="Compare inclusion/exclusion decisions across multiple AI models"
+      headerDescription={
+        <span className="flex items-center gap-2">
+          Compare inclusion/exclusion decisions across multiple AI models
+          <HoverCard>
+            <HoverCardTrigger className="cursor-help">
+              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+            </HoverCardTrigger>
+            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
+                <p className="text-muted-foreground leading-relaxed">
+                  This screen compares the results of multiple independent AI screening runs evaluating the exact same base papers. Use this tool to identify where different models agree (safe to proceed) or conflict (requiring human adjudication).
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        </span>
+      }
     >
       <div className="p-6 space-y-8 animate-in fade-in duration-500">
-        
+
         {!hasEnoughRuns ? (
           <Card className="p-12 text-center border-dashed">
-             <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-             <h3 className="text-lg font-semibold text-foreground mb-2">
-               Multiple Runs Required
-             </h3>
-             <p className="text-muted-foreground mb-6">
-               To compare AI decisions, you need to save at least two runs in Step 1 using different models or prompts.
-             </p>
-             <Link href="/review/setup">
-               <Button className="gap-2">
-                 Go Setup a New Run
-               </Button>
-             </Link>
+            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
+            <h3 className="text-lg font-semibold text-foreground mb-2">
+              Multiple Runs Required
+            </h3>
+            <p className="text-muted-foreground mb-6">
+              To compare AI decisions, you need to save at least two runs in Step 1 using different models or prompts.
+            </p>
+            <Link href="/review/setup">
+              <Button className="gap-2">
+                Go Setup a New Run
+              </Button>
+            </Link>
           </Card>
         ) : (
           <>
@@ -149,7 +167,7 @@ export default function ComparisonPage() {
                       {savedS1Runs.map(run => (
                         <th key={run.id} className="text-center py-3 px-4 text-muted-foreground font-medium">
                           {run.name}
-                          <br/>
+                          <br />
                           <span className="text-[10px] font-normal">{run.model}</span>
                         </th>
                       ))}
@@ -203,7 +221,7 @@ export default function ComparisonPage() {
                 <div>
                   <p className="font-semibold text-foreground mb-2">How to use this data</p>
                   <p className="text-sm text-foreground/80">
-                    Papers marked as <strong>AGREE</strong> can usually be safely proceeded without further manual review. 
+                    Papers marked as <strong>AGREE</strong> can usually be safely proceeded without further manual review.
                     Papers marked as <strong>CONFLICT</strong> require human adjudication. You can return to the Gate screen and select which run's results you wish to use as the base for Step 2.
                   </p>
                 </div>

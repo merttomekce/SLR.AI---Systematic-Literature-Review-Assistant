@@ -27,7 +27,7 @@ export interface LLMRequest {
 export interface Step1Result {
     decision: 'INCLUDED' | 'EXCLUDED' | 'NOT ACCESSIBLE';
     reason: string;
-    confidence: number;
+    relevancy: number;
 }
 
 export interface Step2Result {
@@ -201,26 +201,28 @@ export async function processStep1(
         return {
             decision: 'NOT ACCESSIBLE',
             reason: 'No abstract provided for processing.',
-            confidence: 1.0
+            relevancy: 1
         };
     }
 
-    const systemPrompt = `You are an expert academic researcher assisting with a Systematic Literature Review.
-Your task is to review the title and abstract of a single academic paper and decide whether it should be INCLUDED or EXCLUDED based ONLY on the provided criteria.
+    const systemPrompt = `You are an expert academic researcher conducting the Abstract Screening phase (Step 1) of a Systematic Literature Review (SLR) following PRISMA guidelines.
+Your task is to review the title and abstract of a single academic paper and decide whether it should be INCLUDED for full-text review or EXCLUDED.
 
 Research Topic: ${researchParams.topic}
 Inclusion Criteria: ${researchParams.inclusionCriteria}
 Exclusion Criteria: ${researchParams.exclusionCriteria}
 Extra Context: ${researchParams.extraContext}
 
-If the paper meets ALL inclusion criteria and NO exclusion criteria, mark it as INCLUDED.
-If the paper fails at least one inclusion criterion or meets an exclusion criterion, mark it as EXCLUDED.
-If you are confident, rate your confidence higher.
+EVALUATION RULES (Based on SRS & Abstract Limitations):
+1. INCLUDED: Paper meets all inclusion criteria and none of the exclusion criteria.
+2. EXCLUDED: Paper fails at least one inclusion criterion or meets an exclusion criterion.
+3. HANDLING MISSING DATA: Abstracts are short summaries. If an abstract lacks sufficient detail to definitively confirm an Inclusion Criterion, you MUST give it the benefit of the doubt and assume it passes that criterion. 
+4. Do NOT exclude a paper simply because the abstract didn't mention a specific detail. Exclude ONLY for explicit contradictions.
 
 Return your answer strictly in ONE valid JSON object with the following keys:
-- "decision": either "INCLUDED" or "EXCLUDED".
-- "reason": A brief string explaining your reasoning.
-- "confidence": A number from 0.0 to 1.0 indicating your confidence in the decision.
+- "reasoning": A detailed step-by-step evaluation of the abstract against the criteria.
+- "decision": strictly either "INCLUDED" or "EXCLUDED".
+- "relevancy": An integer from 1 to 5 indicating the paper's relevancy to the topic.
 No markdown backticks, just raw JSON string.`;
 
     const userPrompt = `Title: ${paper.title || 'N/A'}\nAuthors: ${paper.author || 'N/A'}\nYear: ${paper.year || 'N/A'}\nAbstract: ${paper.abstract}\n`;
@@ -241,8 +243,8 @@ No markdown backticks, just raw JSON string.`;
 
         return {
             decision: ['INCLUDED', 'EXCLUDED'].includes(result.decision) ? result.decision : 'EXCLUDED',
-            reason: result.reason || 'No reason provided by AI',
-            confidence: typeof result.confidence === 'number' ? result.confidence : 0.5
+            reason: result.reasoning || result.reason || 'No reason provided by AI',
+            relevancy: typeof result.relevancy === 'number' ? result.relevancy : 3
         };
     } catch (error) {
         console.error("Step 1 LLM Error:", error);

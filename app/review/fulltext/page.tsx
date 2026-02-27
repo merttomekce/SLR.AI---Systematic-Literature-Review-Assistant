@@ -19,8 +19,10 @@ import {
   Play,
   Pause,
   Download,
-  Loader2
+  Loader2,
+  Info
 } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { useReviewStore, Paper, Decision } from '@/store/useReviewStore';
@@ -197,7 +199,24 @@ export default function FullTextReviewPage() {
   return (
     <LayoutWrapper
       headerTitle="Full-Text Review (Step 2)"
-      headerDescription={currentS2Run ? `Run: \${currentS2Run.name} (\${currentS2Run.model})` : "Extract and analyze data from included studies"}
+      headerDescription={
+        <span className="flex items-center gap-2">
+          {currentS2Run ? `Run: ${currentS2Run.name} (${currentS2Run.model})` : "Extract and analyze data from included studies"}
+          <HoverCard>
+            <HoverCardTrigger className="cursor-help">
+              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+            </HoverCardTrigger>
+            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
+                <p className="text-muted-foreground leading-relaxed">
+                  Step 2 requires full-text PDFs. It evaluates inclusion/exclusion criteria strictly against the full document and extracts data points specified in the Setup page. This mirrors the full-text review phase in a human-conducted PRISMA workflow.
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        </span>
+      }
     >
       <div className="p-6 space-y-6 animate-in fade-in duration-500">
         {!currentS2Run && (

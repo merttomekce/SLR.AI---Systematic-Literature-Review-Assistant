@@ -40,7 +40,6 @@ const navItems: NavItem[] = [
 const reviewStages = [
   { title: 'Setup', href: '/review/setup', icon: <Settings className="w-4 h-4" /> },
   { title: 'Abstract Screening', href: '/review/screening', icon: <FileText className="w-4 h-4" /> },
-  { title: 'Quality Gate', href: '/review/gate', icon: <BarChart3 className="w-4 h-4" /> },
   { title: 'Full-Text Review', href: '/review/fulltext', icon: <BookOpen className="w-4 h-4" /> },
   { title: 'Comparison', href: '/review/comparison', icon: <BarChart3 className="w-4 h-4" /> },
 ];

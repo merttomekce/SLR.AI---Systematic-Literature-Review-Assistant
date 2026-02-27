@@ -8,10 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, ChevronRight, FileText, Settings, Loader2 } from 'lucide-react';
+import { Upload, ChevronRight, FileText, Settings, Loader2, Info } from 'lucide-react';
+import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useRouter } from 'next/navigation';
 import { useReviewStore } from '@/store/useReviewStore';
-import { parseExcelFile } from '@/lib/fileParser';
+import { parseExcelFile, parseTextReferences } from '@/lib/fileParser';
 
 const PROVIDER_NAMES: Record<string, string> = {
   anthropic: 'Anthropic',
@@ -31,6 +32,7 @@ export default function SetupPage() {
 
   const [uploadedFiles, setUploadedFiles] = useState<string[]>([]);
   const [isParsing, setIsParsing] = useState(false);
+  const [apaText, setApaText] = useState('');
 
   // Debounce API key typing to trigger auto-fetch
   useEffect(() => {
@@ -66,6 +68,18 @@ export default function SetupPage() {
     }
   };
 
+  const handlePasteRefs = () => {
+    if (!apaText.trim()) return;
+    const parsedPapers = parseTextReferences(apaText);
+    if (parsedPapers.length > 0) {
+      loadPapers(parsedPapers, false);
+      setUploadedFiles((prev) => [...prev, `Pasted References (${parsedPapers.length})`]);
+      setApaText(''); // clear text area after successful load
+    } else {
+      alert("Could not parse any references. Please check the format.");
+    }
+  };
+
   const removeFile = (fileName: string) => {
     setUploadedFiles((prev) => prev.filter((f) => f !== fileName));
   };
@@ -78,8 +92,25 @@ export default function SetupPage() {
 
   return (
     <LayoutWrapper
-      headerTitle="Setup Review"
-      headerDescription="Configure your systematic literature review parameters"
+      headerTitle="Project Setup"
+      headerDescription={
+        <span className="flex items-center gap-2">
+          Configure API keys, models, and research criteria
+          <HoverCard>
+            <HoverCardTrigger className="cursor-help">
+              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
+            </HoverCardTrigger>
+            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
+              <div className="space-y-2">
+                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
+                <p className="text-muted-foreground leading-relaxed">
+                  The Setup phase allows you to globally configure the AI model, set strict inclusion/exclusion criteria for papers, and provide the references (via CSV, Excel, or APA format). These settings dictate how the AI will evaluate studies during the screening runs.
+                </p>
+              </div>
+            </HoverCardContent>
+          </HoverCard>
+        </span>
+      }
     >
       <div className="p-6 space-y-8 animate-in fade-in duration-500">
         <div className="grid gap-6 lg:grid-cols-3">
@@ -103,7 +134,9 @@ export default function SetupPage() {
                       placeholder="Paste OpenAI (sk-), Anthropic (sk-ant-), or Google (AIza) key..."
                       className="bg-input border-border transition-smooth focus:border-primary"
                     />
-                    <p className="text-xs text-muted-foreground mt-1">Provider and available models will auto-detect from your key.</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      The key is stored only in your browser&apos;s memory for the current session and is cleared when you close or refresh the page.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -130,6 +163,9 @@ export default function SetupPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      Use a more capable model (e.g. claude-3-opus) for smaller reference lists where cost is less of a concern, or a faster model (claude-3-5-haiku) for large batches.
+                    </p>
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
@@ -141,6 +177,9 @@ export default function SetupPage() {
                       placeholder="e.g. Claude Sonnet Base Run"
                       className="bg-input border-border transition-smooth focus:border-primary"
                     />
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      Give this run a descriptive label. This name appears in the Comparison view, saved run lists, and exported Excel files. Choose a name that clearly identifies what changed between runs.
+                    </p>
                   </div>
                 </div>
               </div>
@@ -163,6 +202,9 @@ export default function SetupPage() {
                       rows={2}
                       className="bg-input border-border transition-smooth focus:border-primary resize-none"
                     />
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      Write a clear, focused description of your review topic. This is the primary context the AI uses to make inclusion decisions. Be specific enough that the AI can distinguish relevant from irrelevant papers.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -175,6 +217,9 @@ export default function SetupPage() {
                       rows={3}
                       className="bg-input border-border transition-smooth focus:border-primary resize-none"
                     />
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      List the criteria a paper must meet to be included. Examples: study design (RCT, cohort), population (human adults), language (English), date range (2015–2025), outcome type (quantitative).
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -187,6 +232,9 @@ export default function SetupPage() {
                       rows={3}
                       className="bg-input border-border transition-smooth focus:border-primary resize-none"
                     />
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      List reasons to exclude a paper. Examples: conference abstracts only, n &lt; 50 participants, pediatric or veterinary studies, non-English, grey literature.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -199,6 +247,9 @@ export default function SetupPage() {
                       rows={2}
                       className="bg-input border-border transition-smooth focus:border-primary resize-none"
                     />
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      Enter a comma-separated list of data fields you want the AI to extract during full-text review. These become columns in the Step 2 results table.
+                    </p>
                   </div>
 
                   <div className="space-y-2">
@@ -211,6 +262,9 @@ export default function SetupPage() {
                       rows={2}
                       className="bg-input border-border transition-smooth focus:border-primary resize-none"
                     />
+                    <p className="text-xs text-muted-foreground mt-1 text-balance">
+                      Provide any additional instructions that should guide AI decisions but do not fit neatly into inclusion/exclusion criteria. Examples: &quot;Treat systematic reviews without meta-analysis as excluded,&quot; or &quot;Focus on prospective designs.&quot;
+                    </p>
                   </div>
                 </div>
               </div>
@@ -238,10 +292,42 @@ export default function SetupPage() {
                       {isParsing ? "Parsing file..." : "Click to upload Excel/CSV"}
                     </p>
                     <p className="text-xs text-muted-foreground mt-1">
-                      Must contain Title, Author, Year, Abstract columns
+                      Must contain Title, Author, Year, Abstract columns.
                     </p>
                   </label>
                   {isParsing && <div className="absolute inset-0 bg-secondary/50 flex z-0 items-center justify-center animate-pulse" />}
+                </div>
+
+                <div className="relative flex items-center py-2">
+                  <div className="flex-grow border-t border-border"></div>
+                  <span className="flex-shrink-0 mx-4 text-muted-foreground text-xs uppercase tracking-wider">or paste</span>
+                  <div className="flex-grow border-t border-border"></div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="apaText" className="text-foreground">Paste APA references</Label>
+                  <Textarea
+                    id="apaText"
+                    value={apaText}
+                    onChange={(e) => setApaText(e.target.value)}
+                    placeholder="Author, A. A., & Author, B. B. (Year). Title... doi:10.xxxx/..."
+                    rows={4}
+                    className="bg-input border-border transition-smooth focus:border-primary resize-none"
+                  />
+                  <div className="flex justify-between items-start gap-2">
+                    <p className="text-xs text-muted-foreground text-balance mt-1">
+                      Paste plain-text APA-formatted references into the text area. The tool extracts DOIs and years automatically. Both methods can be combined.
+                    </p>
+                    <Button
+                      onClick={handlePasteRefs}
+                      disabled={apaText.trim().length === 0}
+                      variant="secondary"
+                      size="sm"
+                      className="shrink-0"
+                    >
+                      Import Text
+                    </Button>
+                  </div>
                 </div>
 
                 {/* Uploaded Files */}

@@ -19,7 +19,7 @@ export interface Paper {
   // Step 1 screening result
   s1Decision?: Decision;
   s1Reason?: string;
-  s1Confidence?: number;
+  s1Relevancy?: number;
 
   // Step 2 screening result
   s2Decision?: Decision;
@@ -238,7 +238,7 @@ export const useReviewStore = create<ReviewState>((set, get) => ({
         get().updatePaperInCurrentRun(nextPaper.id, {
           s1Decision: result.decision,
           s1Reason: result.reason,
-          s1Confidence: result.confidence
+          s1Relevancy: result.relevancy
         });
 
       } catch (err: any) {

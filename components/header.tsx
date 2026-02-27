@@ -6,8 +6,8 @@ import { Moon, Sun } from 'lucide-react';
 import { useEffect, useState } from 'react';
 
 interface HeaderProps {
-  title?: string;
-  description?: string;
+  title?: React.ReactNode;
+  description?: React.ReactNode;
 }
 
 export function Header({ title, description }: HeaderProps) {

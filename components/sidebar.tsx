@@ -30,12 +30,6 @@ const navItems: NavItem[] = [
     description: 'View your reviews',
   },
   {
-    title: 'Bento Dashboard',
-    href: '/dashboard-bento',
-    icon: <BarChart3 className="w-5 h-5" />,
-    description: 'Centralized beta UI',
-  },
-  {
     title: 'New Review',
     href: '/review/setup',
     icon: <BookOpen className="w-5 h-5" />,

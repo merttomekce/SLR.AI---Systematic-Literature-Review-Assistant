@@ -2,14 +2,20 @@
 
 import { useEffect, useRef } from 'react';
 
-interface Particle {
+// For the SLR Citation Web effect
+interface DocumentNode {
     x: number;
     y: number;
     vx: number;
     vy: number;
-    radius: number;
+    scale: number; // Base size of the document
     baseAlpha: number;
-    depth: number; // For parallax effect
+    depth: number; // For parallax effect and blur
+    isCentralNode: boolean; // Some nodes are larger 'hub' papers (Stacks)
+    category: 'included' | 'excluded' | 'unprocessed'; // Semantic colors
+    format: 'portrait' | 'landscape' | 'chart'; // Geometry variety
+    hasDogEar: boolean;
+    scanPhase: number; // For the laser scanner animation
 }
 
 export function InteractiveBackground() {
@@ -33,7 +39,6 @@ export function InteractiveBackground() {
         let smoothScrollY = window.scrollY;
         let lastSmoothScrollY = window.scrollY;
 
-        // Canvas sizing based on device pixel ratio for sharpness
         const resizeCanvas = () => {
             const dpr = window.devicePixelRatio || 1;
             const rect = canvas.getBoundingClientRect();
@@ -45,23 +50,35 @@ export function InteractiveBackground() {
         window.addEventListener('resize', resizeCanvas);
         resizeCanvas();
 
-        // Particle Configuration
-        const particleCount = 120; // Number of nodes
-        const maxConnectionDistance = 150; // How close they must be to draw a line
-        const interactionRadius = 250; // How close mouse must be to pull/glow
+        const particleCount = 80; // Fewer particles since docs are larger than dots
+        const maxConnectionDistance = 180;
+        const interactionRadius = 250;
 
-        // Initialize Particles
-        const particles: Particle[] = Array.from({ length: particleCount }, () => ({
-            x: Math.random() * canvas.getBoundingClientRect().width,
-            y: Math.random() * canvas.getBoundingClientRect().height,
-            vx: (Math.random() - 0.5) * 0.5, // Slow ambient drifting
-            vy: (Math.random() - 0.5) * 0.5,
-            radius: Math.random() * 1.5 + 0.5,
-            baseAlpha: Math.random() * 0.5 + 0.1,
-            depth: Math.random() * 0.8 + 0.2, // 0.2 (far) to 1.0 (close) for parallax speed
-        }));
+        // Check if running on client (prevent hydration SSR geometry mismatches)
+        const windowWidth = typeof window !== 'undefined' ? window.innerWidth : 1000;
+        const windowHeight = typeof window !== 'undefined' ? window.innerHeight : 1000;
 
-        // Mouse Tracking
+        const particles: DocumentNode[] = Array.from({ length: particleCount }, (_, i) => {
+            const isCentral = i % 12 === 0;
+            const randCategory = Math.random();
+            const randFormat = Math.random();
+
+            return {
+                x: Math.random() * windowWidth,
+                y: Math.random() * windowHeight,
+                vx: (Math.random() - 0.5) * 0.3,
+                vy: (Math.random() - 0.5) * 0.3,
+                scale: Math.random() * 2 + 1.5,
+                baseAlpha: Math.random() * 0.4 + 0.1,
+                depth: Math.random() * 0.8 + 0.2,
+                isCentralNode: isCentral,
+                category: randCategory > 0.8 ? 'included' : randCategory > 0.6 ? 'excluded' : 'unprocessed',
+                format: randFormat > 0.8 ? 'chart' : randFormat > 0.6 ? 'landscape' : 'portrait',
+                hasDogEar: Math.random() > 0.7 && !isCentral,
+                scanPhase: Math.random() * Math.PI * 2,
+            };
+        });
+
         const handleMouseMove = (e: MouseEvent) => {
             const rect = canvas.getBoundingClientRect();
             mouseX = e.clientX - rect.left;
@@ -79,7 +96,6 @@ export function InteractiveBackground() {
             mouseY = -1000;
         };
 
-        // Scroll Tracking
         const handleScroll = () => {
             currentScrollY = window.scrollY;
         };
@@ -88,7 +104,6 @@ export function InteractiveBackground() {
         window.addEventListener('mouseleave', handleMouseLeave);
         window.addEventListener('scroll', handleScroll, { passive: true });
 
-        // Animation Loop
         let animationFrameId: number;
 
         const render = () => {
@@ -96,92 +111,189 @@ export function InteractiveBackground() {
             const width = rect.width;
             const height = rect.height;
 
-            // Calculate scroll delta for parallax this frame
-            smoothScrollY += (currentScrollY - smoothScrollY) * 0.1; // Interpolate for smoothness
+            smoothScrollY += (currentScrollY - smoothScrollY) * 0.1;
             const scrollDelta = smoothScrollY - lastSmoothScrollY;
             lastSmoothScrollY = smoothScrollY;
 
-            // Clear frame
             ctx.clearRect(0, 0, width, height);
 
-            // Update and Draw Particles
             for (let i = 0; i < particles.length; i++) {
                 const p = particles[i];
 
-                // Apply mouse interaction (attraction + speed boost when moving)
                 const dxMouse = mouseX - p.x;
                 const dyMouse = mouseY - p.y;
                 const distMouse = Math.sqrt(dxMouse * dxMouse + dyMouse * dyMouse);
 
                 if (distMouse < interactionRadius) {
-                    // Attract towards mouse
                     const force = (interactionRadius - distMouse) / interactionRadius;
-                    const attractionStrength = isMouseMoving ? 0.05 : 0.01;
+                    const attractionStrength = isMouseMoving ? 0.04 : 0.01;
 
                     p.vx += (dxMouse / distMouse) * force * attractionStrength;
                     p.vy += (dyMouse / distMouse) * force * attractionStrength;
 
-                    // Max speed cap to avoid them flying away completely
                     const currentSpeed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
-                    if (currentSpeed > 3) {
-                        p.vx = (p.vx / currentSpeed) * 3;
-                        p.vy = (p.vy / currentSpeed) * 3;
+                    if (currentSpeed > 2) {
+                        p.vx = (p.vx / currentSpeed) * 2;
+                        p.vy = (p.vy / currentSpeed) * 2;
                     }
                 }
 
-                // Apply Ambient Drift & Friction
                 p.x += p.vx;
                 p.y += p.vy;
 
-                // --- Apply Parallax Scrolling ---
-                // Move Y based on scroll delta and particle depth (parallax strength)
-                const parallaxStrength = 0.5; // Adjust this to make the scroll effect more or less severe
+                const parallaxStrength = 0.5;
                 p.y -= scrollDelta * p.depth * parallaxStrength;
 
-                // Gentle friction to slow them back down to ambient speed
                 p.vx *= 0.98;
                 p.vy *= 0.98;
 
-                // Ensure minimum ambient speed is maintained
                 if (Math.abs(p.vx) < 0.1 && Math.abs(p.vy) < 0.1) {
                     p.vx += (Math.random() - 0.5) * 0.05;
                     p.vy += (Math.random() - 0.5) * 0.05;
                 }
 
-                // Boundary Reflection & Wrapping
-                if (p.x < 0) p.x += width;
-                if (p.x > width) p.x -= width;
+                if (p.x < -50) p.x += width + 100;
+                if (p.x > width + 50) p.x -= width + 100;
 
-                // Y boundaries wrap smoothly to keep the screen populated when scrolling
                 if (p.y < -100) {
                     p.y += height + 200;
-                    p.x = Math.random() * width; // Randomize X to avoid obvious repeating patterns
+                    p.x = Math.random() * width;
                 }
                 if (p.y > height + 100) {
                     p.y -= height + 200;
                     p.x = Math.random() * width;
                 }
 
-                // Draw Particle (Node)
-                // If near mouse, glow primary color (indigo-ish)
+                // --- DRAW DOCUMENT ---
                 let alpha = p.baseAlpha;
-                let colorStr = `rgba(100, 116, 139, ${alpha})`; // Default Slate
+                let glowIntensity = 0;
 
                 if (distMouse < interactionRadius) {
-                    const glowIntensity = (interactionRadius - distMouse) / interactionRadius;
+                    glowIntensity = (interactionRadius - distMouse) / interactionRadius;
                     alpha = Math.min(1, p.baseAlpha + glowIntensity * 0.8);
-                    // Mix between slate and primary primary (#3713ec / rgb(55,19,236))
-                    colorStr = `rgba(${55 * glowIntensity + 100 * (1 - glowIntensity)}, ${19 * glowIntensity + 116 * (1 - glowIntensity)}, ${236 * glowIntensity + 139 * (1 - glowIntensity)}, ${alpha})`;
                 }
 
-                ctx.beginPath();
-                // Base size scaled slightly by depth to enhance the parallax illusion
-                const displayRadius = p.radius + (p.depth * 0.5);
-                ctx.arc(p.x, p.y, displayRadius, 0, Math.PI * 2);
-                ctx.fillStyle = colorStr;
-                ctx.fill();
+                // 1. Depth of Field (Blur)
+                // Nodes further away (lower depth) are blurrier, but hovering pulls them into focus
+                const focusPull = glowIntensity * 2;
+                let blurAmount = Math.max(0, (1 - p.depth) * 4 - focusPull);
+                if (ctx.filter !== undefined) {
+                    ctx.filter = `blur(${blurAmount}px)`;
+                }
 
-                // Check connections with other particles
+                // Get Semantic Colors based on Category
+                let r = 55, g = 19, b = 236; // Indigo default
+                if (glowIntensity > 0.1) {
+                    if (p.category === 'included') { r = 16; g = 185; b = 129; } // Emerald
+                    if (p.category === 'excluded') { r = 244; g = 63; b = 94; } // Rose
+                }
+                const glowGems = `rgba(${r}, ${g}, ${b}, ${glowIntensity})`;
+                const fillGems = `rgba(${r + 50 * glowIntensity}, ${g + 50 * glowIntensity}, ${b + 50 * glowIntensity}, ${alpha * 0.8})`;
+
+                // 2. Geometry Variety (Format & Stacks)
+                const docWidth = p.scale * (p.isCentralNode ? 8 : p.format === 'landscape' ? 6 : 4);
+                const docHeight = p.format === 'landscape' ? docWidth * 0.7 : docWidth * 1.4;
+                const docX = p.x - docWidth / 2;
+                const docY = p.y - docHeight / 2;
+
+                const drawPaperShape = (offsetX = 0, offsetY = 0) => {
+                    ctx.beginPath();
+                    if (p.hasDogEar && !p.isCentralNode) {
+                        ctx.moveTo(docX + offsetX, docY + offsetY);
+                        ctx.lineTo(docX + docWidth - docWidth * 0.3 + offsetX, docY + offsetY);
+                        ctx.lineTo(docX + docWidth + offsetX, docY + docWidth * 0.3 + offsetY);
+                        ctx.lineTo(docX + docWidth + offsetX, docY + docHeight + offsetY);
+                        ctx.lineTo(docX + offsetX, docY + docHeight + offsetY);
+                        ctx.closePath();
+                    } else if (ctx.roundRect) {
+                        ctx.roundRect(docX + offsetX, docY + offsetY, docWidth, docHeight, docWidth * 0.1);
+                    } else {
+                        ctx.rect(docX + offsetX, docY + offsetY, docWidth, docHeight);
+                    }
+                };
+
+                // Draw Stack for Central Hubs
+                if (p.isCentralNode) {
+                    ctx.fillStyle = `rgba(15, 23, 42, ${alpha * 0.4})`;
+                    ctx.strokeStyle = `rgba(100, 116, 139, ${alpha * 0.2})`;
+                    drawPaperShape(-docWidth * 0.1, docHeight * 0.1);
+                    ctx.fill(); ctx.stroke();
+                    drawPaperShape(-docWidth * 0.05, docHeight * 0.05);
+                    ctx.fill(); ctx.stroke();
+                }
+
+                // Draw Main Paper
+                if (glowIntensity > 0.1) {
+                    ctx.fillStyle = fillGems;
+                    ctx.shadowColor = glowGems;
+                    ctx.shadowBlur = 15;
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${alpha})`;
+                } else {
+                    ctx.fillStyle = `rgba(30, 41, 59, ${alpha * 0.6})`;
+                    ctx.shadowBlur = 0;
+                    ctx.strokeStyle = `rgba(100, 116, 139, ${alpha * 0.5})`;
+                }
+
+                drawPaperShape();
+                ctx.fill();
+                ctx.lineWidth = Math.max(0.5, docWidth * 0.05);
+                ctx.stroke();
+
+                // Draw little dog-ear fold if applicable
+                if (p.hasDogEar && !p.isCentralNode) {
+                    ctx.beginPath();
+                    ctx.moveTo(docX + docWidth - docWidth * 0.3, docY);
+                    ctx.lineTo(docX + docWidth - docWidth * 0.3, docY + docWidth * 0.3);
+                    ctx.lineTo(docX + docWidth, docY + docWidth * 0.3);
+                    ctx.fillStyle = `rgba(255, 255, 255, ${alpha * 0.2})`;
+                    ctx.fill();
+                    ctx.stroke();
+                }
+
+                // 3. Document Content Variety (Text lines vs Charts)
+                if (docWidth > 8) {
+                    ctx.beginPath();
+                    if (p.format === 'chart') {
+                        // Draw tiny bar chart
+                        ctx.rect(docX + docWidth * 0.2, docY + docHeight * 0.8, docWidth * 0.15, -docHeight * 0.3);
+                        ctx.rect(docX + docWidth * 0.45, docY + docHeight * 0.8, docWidth * 0.15, -docHeight * 0.5);
+                        ctx.rect(docX + docWidth * 0.7, docY + docHeight * 0.8, docWidth * 0.15, -docHeight * 0.2);
+                        ctx.fillStyle = glowIntensity > 0.1 ? `rgba(255, 255, 255, ${alpha})` : `rgba(100, 116, 139, ${alpha})`;
+                        ctx.fill();
+                    } else {
+                        // Draw standard abstract text lines
+                        ctx.moveTo(docX + docWidth * 0.2, docY + docHeight * 0.25);
+                        ctx.lineTo(docX + docWidth * 0.8, docY + docHeight * 0.25);
+                        ctx.moveTo(docX + docWidth * 0.2, docY + docHeight * 0.45);
+                        ctx.lineTo(docX + docWidth * 0.8, docY + docHeight * 0.45);
+                        ctx.moveTo(docX + docWidth * 0.2, docY + docHeight * 0.65);
+                        ctx.lineTo(docX + docWidth * 0.6, docY + docHeight * 0.65);
+
+                        ctx.strokeStyle = glowIntensity > 0.1 ? `rgba(255, 255, 255, ${alpha})` : `rgba(100, 116, 139, ${alpha})`;
+                        ctx.lineWidth = Math.max(0.5, docWidth * 0.08);
+                        ctx.stroke();
+                    }
+                }
+
+                // 4. The OCR Laser Scanner Beam Animation
+                if (glowIntensity > 0.2) {
+                    p.scanPhase += 0.05;
+                    const scanY = docY + (Math.sin(p.scanPhase) * 0.5 + 0.5) * docHeight;
+
+                    ctx.beginPath();
+                    ctx.moveTo(docX - docWidth * 0.1, scanY);
+                    ctx.lineTo(docX + docWidth * 1.1, scanY);
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${glowIntensity})`;
+                    ctx.lineWidth = 1;
+                    ctx.shadowBlur = 10;
+                    ctx.shadowColor = `rgba(255, 255, 255, 1)`;
+                    ctx.stroke();
+                }
+
+                ctx.shadowBlur = 0; // Reset shadow
+                if (ctx.filter !== undefined) ctx.filter = 'none';
+
+                // Check connections (Citations)
                 for (let j = i + 1; j < particles.length; j++) {
                     const p2 = particles[j];
                     const dx = p.x - p2.x;
@@ -189,7 +301,6 @@ export function InteractiveBackground() {
                     const dist = Math.sqrt(dx * dx + dy * dy);
 
                     if (dist < maxConnectionDistance) {
-                        // Check if this connection is near the mouse to glow the line
                         const midX = (p.x + p2.x) / 2;
                         const midY = (p.y + p2.y) / 2;
                         const distToMouseStrand = Math.sqrt(Math.pow(mouseX - midX, 2) + Math.pow(mouseY - midY, 2));
@@ -198,20 +309,34 @@ export function InteractiveBackground() {
                         ctx.moveTo(p.x, p.y);
                         ctx.lineTo(p2.x, p2.y);
 
-                        // Standard fade based on distance between points
                         const lineAlpha = 1 - (dist / maxConnectionDistance);
 
                         if (distToMouseStrand < interactionRadius) {
                             const strandGlow = (interactionRadius - distToMouseStrand) / interactionRadius;
                             const activeAlpha = Math.min(0.8, lineAlpha * (1 + strandGlow * 2));
-                            ctx.strokeStyle = `rgba(91, 33, 182, ${activeAlpha * 0.6})`; // Purple-ish active line
-                            ctx.lineWidth = 1 + strandGlow;
+
+                            // Match origin paper's categorical color
+                            ctx.strokeStyle = p.category === 'included' ? `rgba(16, 185, 129, ${activeAlpha * 0.6})` :
+                                p.category === 'excluded' ? `rgba(244, 63, 94, ${activeAlpha * 0.6})` :
+                                    `rgba(91, 33, 182, ${activeAlpha * 0.6})`;
+
+                            ctx.lineWidth = Math.max(1, 2 * strandGlow);
+                            ctx.setLineDash([4, 4]);
+
+                            // 5. Data Flowing Animation along the citation line
+                            // We use the global scanPhase to animate a dash offset backwards to look like data traveling
+                            ctx.lineDashOffset = -Date.now() / 20;
+
                         } else {
-                            ctx.strokeStyle = `rgba(100, 116, 139, ${lineAlpha * 0.15})`; // Slate very faint line
+                            ctx.strokeStyle = `rgba(100, 116, 139, ${lineAlpha * 0.15})`;
                             ctx.lineWidth = 1;
+                            ctx.setLineDash([2, 5]);
+                            ctx.lineDashOffset = 0;
                         }
 
                         ctx.stroke();
+                        ctx.setLineDash([]); // Reset
+                        ctx.lineDashOffset = 0;
                     }
                 }
             }
@@ -235,7 +360,7 @@ export function InteractiveBackground() {
         <canvas
             ref={canvasRef}
             className="fixed inset-0 w-full h-full pointer-events-none z-0"
-            style={{ background: 'transparent' }} // Let the actual body background show through
+            style={{ background: 'transparent' }}
         />
     );
 }

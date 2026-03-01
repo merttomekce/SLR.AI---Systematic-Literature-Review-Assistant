@@ -1,26 +1,14 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { LayoutWrapper } from '@/components/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  CheckCircle2,
-  XCircle,
-  ChevronLeft,
-  ChevronRight,
-  FileText,
-  MessageSquare,
-  Book,
-  Settings,
-  Upload,
-  Play,
-  Pause,
-  Download,
-  Loader2,
-  Info
+  CheckCircle2, XCircle, FileText, Upload, Play,
+  Pause, Download, Loader2, Info, ChevronRight, Activity, FileKey
 } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import Link from 'next/link';
@@ -32,7 +20,7 @@ import { processStep2 } from '@/lib/llmClient';
 export default function FullTextReviewPage() {
   const { currentS2Run, updatePaperInS2Run, apiKey, provider, model, topic, inclusionCriteria, exclusionCriteria, extraContext, extractionFields } = useReviewStore();
 
-  const [currentIndex, setCurrentIndex] = useState(0);
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState('extraction');
 
   const [pdfTexts, setPdfTexts] = useState<Record<string, string>>({});
@@ -46,7 +34,18 @@ export default function FullTextReviewPage() {
   pdfTextsRef.current = pdfTexts;
 
   const papers = currentS2Run ? Object.values(currentS2Run.papers) : [];
-  const currentPaper = papers[currentIndex];
+
+  // Auto-select analyzing paper
+  useEffect(() => {
+    const analyzing = papers.find(p => p.s2Status === 'REVIEWING');
+    if (analyzing) {
+      setSelectedPaperId(analyzing.id);
+    } else if (!selectedPaperId && papers.length > 0) {
+      setSelectedPaperId(papers[0].id);
+    }
+  }, [papers, selectedPaperId]);
+
+  const currentPaper = papers.find(p => p.id === selectedPaperId) || papers[0];
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.currentTarget.files;
@@ -61,12 +60,16 @@ export default function FullTextReviewPage() {
         if (file.name.endsWith('.pdf')) {
           const matchedPaper = matchFileToPaper(file.name, papers);
           if (matchedPaper) {
+            toast.info(`Parsing \${file.name}...`);
             const text = await extractTextFromPDF(file);
             newTexts[matchedPaper.id] = text;
+          } else {
+            toast.warning(`No matching paper for \${file.name}`);
           }
         }
       }
       setPdfTexts(newTexts);
+      toast.success("PDF parsing complete");
     } catch (err) {
       console.error("PDF Parsing Error", err);
       toast.error("Parsing Failed", {
@@ -100,12 +103,11 @@ export default function FullTextReviewPage() {
       if (!currentRun) break;
 
       const allPapers = Object.values(currentRun.papers);
-      // Find next pending paper that also has a PDF loaded
       const nextPaper = allPapers.find(p => p.s2Status === 'PENDING' && pdfTextsRef.current[p.id]);
 
       if (!nextPaper) {
         setIsRunning(false);
-        break; // All done with available PDFs
+        break;
       }
 
       state.updatePaperInS2Run(nextPaper.id, { s2Status: 'REVIEWING' });
@@ -140,7 +142,7 @@ export default function FullTextReviewPage() {
           const waitSeconds = err.retryAfterSeconds || 60;
           state.updatePaperInS2Run(nextPaper.id, { s2Status: 'PENDING' });
 
-          console.log(`Rate limit hit, pausing Full-Text extraction for ${waitSeconds} seconds...`);
+          console.log(`Rate limit hit, pausing Full-Text extraction for \${waitSeconds} seconds...`);
 
           for (let i = waitSeconds; i > 0; i--) {
             if (!isRunningRef.current) break;
@@ -155,7 +157,7 @@ export default function FullTextReviewPage() {
         setIsRunning(false);
         toast.error("API Error", {
           id: "api-error-toast",
-          description: `${err.message || 'Unknown error'}. Processing paused.`
+          description: `\${err.message || 'Unknown error'}. Processing paused.`
         });
         break;
       }
@@ -196,39 +198,33 @@ export default function FullTextReviewPage() {
   const doneCount = papers.filter(p => p.s2Status === 'DONE').length;
   const pdfsLoaded = Object.keys(pdfTexts).length;
 
+  function renderStatus(status: 'DONE' | 'PENDING' | 'REVIEWING' | 'ERROR' | undefined, decision: string | undefined) {
+    if (status === 'DONE') {
+      if (decision === 'INCLUDED') return <span className="text-[9px] uppercase tracking-widest font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(74,222,128,0.2)]">INCLUDED</span>;
+      if (decision === 'EXCLUDED') return <span className="text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded shadow-[0_0_10px_rgba(248,113,113,0.2)]">EXCLUDED</span>;
+      return <span className="text-[9px] uppercase tracking-widest font-bold text-green-400 bg-green-400/10 px-2 py-0.5 rounded">DONE</span>;
+    }
+    if (status === 'REVIEWING') return <span className="text-[9px] uppercase tracking-widest font-bold text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.4)]">EXTRACTING...</span>;
+    if (status === 'ERROR') return <span className="text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded">ERROR</span>;
+    return <span className="text-[9px] uppercase tracking-widest font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded">PENDING</span>;
+  }
+
   return (
     <LayoutWrapper
-      headerTitle="Full-Text Review (Step 2)"
-      headerDescription={
-        <span className="flex items-center gap-2">
-          {currentS2Run ? `Run: ${currentS2Run.name} (${currentS2Run.model})` : "Extract and analyze data from included studies"}
-          <HoverCard>
-            <HoverCardTrigger className="cursor-help">
-              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-            </HoverCardTrigger>
-            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  Step 2 requires full-text PDFs. It evaluates inclusion/exclusion criteria strictly against the full document and extracts data points specified in the Setup page. This mirrors the full-text review phase in a human-conducted PRISMA workflow.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        </span>
-      }
+      headerTitle="Full-Text Review"
+      headerDescription="Deep extraction phase on included PDFs"
     >
-      <div className="p-6 space-y-6 animate-in fade-in duration-500">
+      <div className="p-6 h-[calc(100vh-80px)] flex flex-col overflow-hidden max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-[#000000] text-white">
+
         {!currentS2Run && (
-          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-yellow-600 mb-6">
-            No active Step 2 run found. Progress through Step 1 and the Gate to reach this step.
+          <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-yellow-500 mb-6 text-xs uppercase tracking-widest font-bold">
+            No active processing queue found. Please start a run from the previous screening step.
           </div>
         )}
 
-        {/* Controls Bar */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center justify-between pb-4 border-b border-border">
-
-          <div className="flex gap-4 items-center w-full sm:w-auto">
+        {/* TOP BAR */}
+        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+          <div className="flex items-center gap-6 border border-white/10 rounded-full p-1 pr-6 bg-white/[0.02]">
             <label className="cursor-pointer">
               <input
                 type="file"
@@ -238,229 +234,158 @@ export default function FullTextReviewPage() {
                 className="hidden"
                 disabled={isParsingFiles}
               />
-              <div className="flex items-center gap-2 px-4 py-2 bg-secondary hover:bg-secondary/80 text-secondary-foreground rounded-md shadow-sm transition-smooth font-medium text-sm">
-                <Upload className="w-4 h-4" />
-                {isParsingFiles ? "Parsing PDFs..." : "Upload PDFs"}
+              <div className="h-10 px-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-colors">
+                <Upload className="w-3.5 h-3.5" />
+                {isParsingFiles ? "Parsing..." : "Upload PDFs"}
               </div>
             </label>
-            <span className="text-sm font-medium text-muted-foreground">{pdfsLoaded} PDFs loaded in memory</span>
+            <div className="flex items-center gap-2">
+              <FileKey className="w-4 h-4 text-purple-400" />
+              <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">{pdfsLoaded} PDFs loaded into memory</span>
+            </div>
           </div>
 
           <div className="flex items-center gap-4">
             <Button
-              onClick={toggleProcessing}
-              disabled={!currentS2Run || isParsingFiles || pdfsLoaded === 0 || pauseTimeLeft > 0}
-              className={`gap-2 shadow-md transition-smooth ${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
-            >
-              {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
-              {pauseTimeLeft > 0 ? `Rate Limit Paused (${pauseTimeLeft}s)` : (isRunning ? 'Pause Extraction' : 'Start Full-Text Extraction')}
-            </Button>
-          </div>
-        </div>
-
-        {/* Main Content */}
-        <div className="grid gap-6 lg:grid-cols-4">
-          {/* Left Sidebar - Paper List */}
-          <div className="space-y-4">
-            <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm space-y-3">
-              <p className="text-xs-caps flex justify-between">
-                <span>Included in S1 ({total})</span>
-                <span>Done ({doneCount})</span>
-              </p>
-              <div className="space-y-2 max-h-[600px] overflow-y-auto pr-2">
-                {papers.map((paper, idx) => (
-                  <button
-                    key={paper.id}
-                    onClick={() => {
-                      setCurrentIndex(idx);
-                      setActiveTab('extraction');
-                    }}
-                    className={`w-full text-left p-3 rounded-md transition-smooth border relative \${
-                      paper.id === currentPaper?.id
-                        ? 'bg-primary/10 border-primary'
-                        : 'bg-secondary border-border hover:border-primary/30'
-                    }`}
-                  >
-                    {pdfTexts[paper.id] && (
-                      <div className="absolute top-2 right-2 w-2 h-2 rounded-full bg-green-500" title="PDF Loaded" />
-                    )}
-                    <p className="text-xs font-medium text-foreground line-clamp-2 pr-4">
-                      {paper.title}
-                    </p>
-                    <div className="flex gap-1 mt-2 flex-wrap">
-                      <Badge variant="outline" className={`text-[10px] uppercase \${paper.s2Status === 'DONE' ? 'bg-green-500/10 text-green-600 border-green-200' : paper.s2Status === 'ERROR' ? 'bg-red-500/10 text-red-600 border-red-200' : ''}`}>
-                        {paper.s2Decision ? `\${paper.s2Decision}` : paper.s2Status || 'PENDING'}
-                      </Badge>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </Card>
-          </div>
-
-          {/* Right Content - Paper Details */}
-          {currentPaper ? (
-            <Card className="lg:col-span-3 border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in duration-300">
-              {/* Header */}
-              <div className="p-6 border-b border-border/50 space-y-3 relative">
-                <div>
-                  <h2 className="text-xl font-medium text-foreground leading-tight">
-                    {currentPaper.title}
-                  </h2>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {currentPaper.author || 'Unknown Authors'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{currentPaper.year || 'Unknown Year'}</Badge>
-                  {currentPaper.doi && <Badge variant="secondary" className="font-mono text-xs">{currentPaper.doi}</Badge>}
-                  {pdfTexts[currentPaper.id] ? (
-                    <Badge className="bg-green-500/10 text-green-600 border-green-200">PDF Ready</Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-muted-foreground">No PDF</Badge>
-                  )}
-                </div>
-              </div>
-
-              {/* Status Banner */}
-              {currentPaper.s2Status === 'DONE' && (
-                <div className={`px-6 py-3 border-b border-border flex flex-col gap-1 \${currentPaper.s2Decision === 'INCLUDED' ? 'bg-green-500/5' : 'bg-red-500/5'}`}>
-                  <div className="flex items-center gap-2 font-semibold">
-                    {currentPaper.s2Decision === 'INCLUDED' ? <CheckCircle2 className="w-5 h-5 text-green-600" /> : <XCircle className="w-5 h-5 text-red-600" />}
-                    <span className={currentPaper.s2Decision === 'INCLUDED' ? 'text-green-600' : 'text-red-600'}>
-                      Final Decision: {currentPaper.s2Decision}
-                    </span>
-                  </div>
-                  {currentPaper.s2Reason && <p className="text-sm text-foreground/80 mt-1">{currentPaper.s2Reason}</p>}
-                </div>
-              )}
-
-              {/* Tabs */}
-              <div className="p-6">
-                <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                  <TabsList className="grid grid-cols-2 bg-secondary">
-                    <TabsTrigger value="extraction" className="gap-2 text-xs">
-                      <FileText className="w-4 h-4" />
-                      Extracted Data
-                    </TabsTrigger>
-                    <TabsTrigger value="pdftext" className="gap-2 text-xs">
-                      <Book className="w-4 h-4" />
-                      PDF Text
-                    </TabsTrigger>
-                  </TabsList>
-
-                  {/* Data Extraction Tab */}
-                  <TabsContent value="extraction" className="space-y-4 mt-4">
-                    {currentPaper.s2Status === 'REVIEWING' ? (
-                      <div className="p-12 flex flex-col items-center justify-center text-primary">
-                        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
-                        <p className="font-mono text-xs tracking-tight animate-pulse text-muted-foreground">AI is reading full text...</p>
-                      </div>
-                    ) : currentPaper.extractedData && Object.keys(currentPaper.extractedData).length > 0 ? (
-                      <div className="space-y-3">
-                        {Object.entries(currentPaper.extractedData).map(([key, value]) => (
-                          <div key={key} className="space-y-1.5 p-4 rounded-lg bg-background/50 border border-border/30">
-                            <p className="text-xs-caps text-foreground">
-                              {key.replace(/([A-Z])/g, ' $1').trim()}
-                            </p>
-                            <div className="text-sm text-foreground/80 break-words font-mono tracking-tight text-[13px] leading-relaxed">
-                              {Array.isArray(value) ? (
-                                <ul className="list-disc pl-5 mt-2 space-y-1">
-                                  {value.map((v, i) => <li key={i}>{v}</li>)}
-                                </ul>
-                              ) : (
-                                String(value)
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="p-8 rounded-lg bg-secondary/50 text-center border border-dashed border-border mb-4">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          No data extracted yet.
-                        </p>
-                      </div>
-                    )}
-                  </TabsContent>
-
-                  {/* PDF Text Tab */}
-                  <TabsContent value="pdftext" className="space-y-4 mt-4">
-                    {pdfTexts[currentPaper.id] ? (
-                      <div className="w-full max-h-96 overflow-y-auto p-4 rounded-md bg-background/50 border border-border/30 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                        {pdfTexts[currentPaper.id].substring(0, 5000)}
-                        {pdfTexts[currentPaper.id].length > 5000 && <div className="mt-4 pt-4 border-t border-border/50 text-center text-primary opacity-70">--- Text Truncated in UI (Full text is used in AI) ---</div>}
-                      </div>
-                    ) : (
-                      <div className="p-8 rounded-lg bg-secondary/30 text-center border border-dashed border-border/50 mb-4">
-                        <p className="text-sm text-muted-foreground mb-2">
-                          No PDF loaded for this paper. Upload PDFs above.
-                        </p>
-                      </div>
-                    )}
-                  </TabsContent>
-                </Tabs>
-              </div>
-
-              {/* Navigation */}
-              <div className="p-6 border-t border-border/50 flex items-center justify-between">
-                <span className="text-xs-caps">
-                  Paper {currentIndex + 1} of {papers.length}
-                </span>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setCurrentIndex(Math.max(0, currentIndex - 1))}
-                    disabled={currentIndex === 0}
-                    variant="outline"
-                    size="sm"
-                    className="border-border disabled:opacity-50"
-                  >
-                    <ChevronLeft className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    onClick={() =>
-                      setCurrentIndex(Math.min(papers.length - 1, currentIndex + 1))
-                    }
-                    disabled={currentIndex === papers.length - 1}
-                    variant="outline"
-                    size="sm"
-                    className="border-border disabled:opacity-50"
-                  >
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </div>
-            </Card>
-          ) : (
-            <Card className="lg:col-span-3 p-8 border-border flex items-center justify-center min-h-[400px]">
-              <p className="text-muted-foreground">Load papers through S1 Gate first.</p>
-            </Card>
-          )}
-        </div>
-
-        {/* Bottom Actions */}
-        <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-border gap-4">
-          <Link href="/review/screening">
-            <Button variant="outline" className="border-border hover:bg-secondary">
-              Back to Abstract Screening
-            </Button>
-          </Link>
-          <div className="flex gap-2">
-            <Button
               onClick={handleExportFinal}
               disabled={!currentS2Run}
-              className="gap-2 bg-green-600 text-white hover:bg-green-700 shadow-md"
+              className="h-10 px-6 gap-2 bg-transparent text-white border border-white/20 hover:bg-white/10 font-bold uppercase tracking-widest text-[10px] rounded-full"
             >
               <Download className="w-4 h-4" />
-              Export Final Excel
+              Export Matrix
             </Button>
-            <Link href="/review/comparison">
-              <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
-                View Comparison
-                <ChevronRight className="w-4 h-4" />
-              </Button>
-            </Link>
+
+            <Button
+              onClick={toggleProcessing}
+              disabled={!currentS2Run || isParsingFiles || pdfsLoaded === 0 || pauseTimeLeft > 0}
+              className={`h-10 px-8 gap-2 font-bold uppercase tracking-widest text-[10px] rounded-full shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:scale-105 active:scale-95 \${isRunning ? 'bg-amber-500 hover:bg-amber-400 text-black' : 'bg-white hover:bg-white/90 text-black'}`}
+            >
+              {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
+              {pauseTimeLeft > 0 ? `PAUSED (\${pauseTimeLeft}s)` : (isRunning ? 'PAUSE ENGINE' : 'START ENGINE')}
+            </Button>
           </div>
+        </div>
+
+        <div className="flex-1 flex gap-6 min-h-0">
+
+          {/* LEFT SIDEBAR: PROCESSING QUEUE */}
+          <div className="w-[350px] flex-shrink-0 flex flex-col gap-4">
+            <Card className="flex-1 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity className="w-4 h-4 text-purple-500" />
+                  <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Processing Queue</h3>
+                </div>
+                <span className="font-mono text-[10px] text-white/40">{doneCount} / {total}</span>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                <div className="grid gap-1">
+                  {papers.map((paper, idx) => {
+                    const hasPdf = !!pdfTexts[paper.id];
+                    return (
+                      <div
+                        key={paper.id}
+                        onClick={() => setSelectedPaperId(paper.id)}
+                        className={`cursor-pointer group flex items-start justify-between p-3 rounded-xl transition-all border border-solid \${selectedPaperId === paper.id ? 'bg-white/10 border-white/20 shadow-inner' : 'bg-transparent border-transparent hover:bg-white/5'}`}
+                      >
+                        <div className="flex-1 min-w-0 pr-3">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span className="text-[8px] font-mono text-white/30">#{(idx + 1).toString().padStart(3, '0')}</span>
+                            {!hasPdf ? (
+                              <span className="text-[8px] font-bold uppercase tracking-widest text-red-500/70 border border-red-500/20 bg-red-500/10 px-1 rounded-sm">No PDF</span>
+                            ) : (
+                              <span className="text-[8px] font-bold uppercase tracking-widest text-green-500/70 border border-green-500/20 bg-green-500/10 px-1 rounded-sm">Ready</span>
+                            )}
+                          </div>
+                          <p className="text-xs font-medium text-white/90 line-clamp-2 leading-snug">{paper.title}</p>
+                        </div>
+                        <div className="flex-shrink-0 mt-1">
+                          {renderStatus(paper.s2Status as 'DONE' | 'PENDING' | 'REVIEWING' | 'ERROR' | undefined, paper.s2Decision)}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* MAIN CENTER AREA: EXTRACTED DATA PAYLOAD */}
+          <div className="flex-1 flex flex-col gap-6 min-w-0">
+            {currentPaper ? (
+              <Card className="flex-1 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-8 relative overflow-hidden flex flex-col">
+                <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-20" />
+
+                <div className="flex items-start justify-between mb-8 pb-6 border-b border-white/5">
+                  <div className="space-y-2 pr-8">
+                    <h3 className="text-[10px] uppercase tracking-widest text-purple-400 font-bold flex items-center gap-2 mb-3">
+                      <FileText className="w-3.5 h-3.5" /> Extracted Data Payload
+                    </h3>
+                    <h2 className="text-2xl font-bold text-white leading-tight">
+                      {currentPaper.title}
+                    </h2>
+                    <p className="text-sm font-mono text-white/40">
+                      {currentPaper.author || 'Unknown Authors'} • {currentPaper.year || 'N/A'} • {currentPaper.doi || 'No DOI'}
+                    </p>
+                  </div>
+                  <div className="flex-shrink-0 text-right space-y-2">
+                    {renderStatus(currentPaper.s2Status as 'DONE' | 'PENDING' | 'REVIEWING' | 'ERROR' | undefined, currentPaper.s2Decision)}
+                    {currentPaper.s2Status === 'REVIEWING' && (
+                      <p className="text-[9px] text-purple-400 font-mono animate-pulse mt-1">Extracting properties...</p>
+                    )}
+                  </div>
+                </div>
+
+                <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
+                  {currentPaper.s2Status === 'REVIEWING' ? (
+                    <div className="h-full flex flex-col items-center justify-center text-white/20">
+                      <div className="w-12 h-12 rounded-full border-t border-r border-purple-500 animate-spin mb-4" />
+                      <p className="font-mono text-xs tracking-widest uppercase">Initializing LLM Decoder...</p>
+                    </div>
+                  ) : currentPaper.extractedData && Object.keys(currentPaper.extractedData).length > 0 ? (
+                    <div className="grid gap-4 lg:grid-cols-2">
+                      {currentPaper.s2Reason && (
+                        <div className="col-span-1 lg:col-span-2 space-y-2 p-5 rounded-xl bg-purple-500/5 border border-purple-500/10 relative overflow-hidden">
+                          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-purple-500/50" />
+                          <p className="text-[10px] uppercase tracking-widest text-purple-400 font-bold">Reasoning Output</p>
+                          <p className="text-xs text-white/80 leading-relaxed font-mono">{currentPaper.s2Reason}</p>
+                        </div>
+                      )}
+
+                      {Object.entries(currentPaper.extractedData).map(([key, value]) => (
+                        <div key={key} className="space-y-3 p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors relative group">
+                          <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white/10 group-hover:bg-white/30 transition-colors" />
+                          <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}
+                          </p>
+                          <div className="text-sm text-white/90 break-words font-mono tracking-tight leading-relaxed">
+                            {Array.isArray(value) ? (
+                              <ul className="list-disc pl-4 space-y-1 marker:text-white/20">
+                                {value.map((v, i) => <li key={i}>{v}</li>)}
+                              </ul>
+                            ) : (
+                              <p>{String(value) || <span className="text-white/20 italic">null</span>}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="h-full flex flex-col items-center justify-center text-white/20">
+                      <FileText className="w-10 h-10 mb-3 opacity-20" />
+                      <p className="text-sm">No structured data extracted.</p>
+                      <p className="text-[10px] font-mono mt-1">Status: {currentPaper.s2Status || 'PENDING'}</p>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-white/20 font-mono text-sm border border-dashed border-white/10 rounded-2xl">
+                Awaiting paper selection.
+              </div>
+            )}
+          </div>
+
         </div>
       </div>
     </LayoutWrapper>

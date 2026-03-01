@@ -12,8 +12,9 @@ import {
   ChevronDown,
   Menu,
   X,
-  BookOpen,
+  BookOpen, // Kept for navigation icons
 } from 'lucide-react';
+import { Logo } from '@/components/logo';
 
 interface NavItem {
   title: string;
@@ -77,10 +78,10 @@ export function Sidebar() {
           <div className="space-y-2">
             <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
               <h1 className="text-xl font-semibold text-sidebar-foreground flex items-center gap-2">
-                <div className="w-8 h-8 rounded bg-sidebar-primary/20 flex items-center justify-center">
-                  <BookOpen className="w-4 h-4 text-sidebar-primary" />
+                <div className="w-8 h-8 rounded bg-transparent flex items-center justify-center">
+                  <Logo className="w-8 h-8" />
                 </div>
-                SLR AI
+                <span className="var(--font-outfit) font-outfit">SLR AI</span>
               </h1>
             </Link>
             <p className="text-xs text-sidebar-foreground/60">Systematic Literature Review</p>

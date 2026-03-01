@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Upload, ChevronRight, FileText, Settings, Loader2, Info } from 'lucide-react';
+import { Upload, ChevronRight, FileText, Settings, Loader2, Info, CheckCircle2 } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useRouter } from 'next/navigation';
 import { useReviewStore } from '@/store/useReviewStore';
@@ -132,111 +132,90 @@ export default function SetupPage() {
 
   return (
     <LayoutWrapper
-      headerTitle="Project Setup"
-      headerDescription={
-        <span className="flex items-center gap-2">
-          Configure API keys, models, and research criteria
-          <HoverCard>
-            <HoverCardTrigger className="cursor-help">
-              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-            </HoverCardTrigger>
-            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  The Setup phase allows you to globally configure the AI model, set strict inclusion/exclusion criteria for papers, and provide the references (via CSV, Excel, or APA format). These settings dictate how the AI will evaluate studies during the screening runs.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        </span>
-      }
+      headerTitle="New Review Setup"
+      headerDescription="Configure system parameters for Systematic Literature Review"
     >
-      <div className="p-6 space-y-8 animate-in fade-in duration-500">
-        <div className="grid gap-6 lg:grid-cols-3">
-          {/* Main Form */}
-          <div className="lg:col-span-2 space-y-6">
+      <div className="p-6 md:p-8 pb-32 md:pb-32 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-500 bg-[#000000] text-white selection:bg-white/20">
 
+        <form className="grid grid-cols-1 lg:grid-cols-2 gap-8" onSubmit={(e) => e.preventDefault()}>
+
+          {/* Left Column: API & Topic */}
+          <div className="space-y-8">
             {/* API Configuration */}
-            <Card className="p-6 border-border/50 bg-card/50 backdrop-blur-sm space-y-4">
-              <div>
-                <h3 className="font-medium text-lg text-foreground flex items-center gap-2 mb-4">
-                  <Settings className="w-5 h-5 text-primary" /> API Configuration
-                </h3>
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="apiKey" className="text-xs-caps">API Key</Label>
-                    <Input
-                      id="apiKey"
-                      type="password"
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder="Paste OpenAI (sk-), Anthropic (sk-ant-), or Google (AIza) key..."
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary font-mono text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 tracking-wide">
-                      The key is stored only in your browser&apos;s memory for the current session and is cleared when you close or refresh the page.
-                    </p>
+            <div className="space-y-6">
+              <div className="flex items-center gap-2 mb-2">
+                <Settings className="w-5 h-5 text-blue-500" />
+                <h2 className="text-sm font-bold tracking-widest text-white uppercase">API Configuration</h2>
+              </div>
+
+              <div className="grid gap-6">
+                <div className="space-y-3">
+                  <Label htmlFor="apiKey" className="text-[10px] uppercase tracking-widest text-white/50">Provider API Key</Label>
+                  <Input
+                    id="apiKey"
+                    type="password"
+                    value={apiKey}
+                    onChange={(e) => setApiKey(e.target.value)}
+                    placeholder="sk-..."
+                    className="bg-white/[0.03] border-none text-white font-mono text-sm h-12 px-4 shadow-inner focus-visible:ring-1 focus-visible:ring-blue-500 rounded-xl"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-3">
+                    <Label className="text-[10px] uppercase tracking-widest text-white/50">Detected Provider</Label>
+                    <div className="h-12 px-4 bg-white/[0.02] rounded-xl flex items-center border border-white/5">
+                      <span className="text-sm font-mono text-white/70">
+                        {PROVIDER_NAMES[provider] || (isFetchingModels ? 'Detecting...' : provider ? provider : 'Waiting...')}
+                      </span>
+                    </div>
                   </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="provider" className="text-xs-caps">Provider</Label>
-                    <Input
-                      id="provider"
-                      value={PROVIDER_NAMES[provider] || (isFetchingModels ? 'Detecting...' : provider ? provider : 'Waiting for API Key...')}
-                      disabled
-                      className="bg-secondary/50 text-muted-foreground font-medium"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="model" className="flex items-center gap-2 text-xs-caps">
-                      Model {isFetchingModels && <Loader2 className="w-3 h-3 animate-spin" />}
+                  <div className="space-y-3">
+                    <Label htmlFor="model" className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-white/50">
+                      Model Selection {isFetchingModels && <Loader2 className="w-3 h-3 animate-spin text-blue-500" />}
                     </Label>
                     <Select value={model} onValueChange={(val) => setProviderAndModel(provider, val)} disabled={availableModels.length === 0 || isFetchingModels}>
-                      <SelectTrigger className="w-full bg-background/50 border-border/50 transition-smooth focus:ring-primary font-mono text-xs">
+                      <SelectTrigger className="w-full bg-white/[0.03] border-none text-white font-mono text-xs h-12 px-4 rounded-xl focus:ring-1 focus:ring-blue-500">
                         <SelectValue placeholder={isFetchingModels ? "Fetching models..." : "Select model"} />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="bg-[#111] border-white/10 text-white">
                         {availableModels.map((v) => (
-                          <SelectItem key={v} value={v} className="font-mono text-xs">{v}</SelectItem>
+                          <SelectItem key={v} value={v} className="font-mono text-xs focus:bg-white/10 focus:text-white cursor-pointer">{v}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      Use a more capable model (e.g. claude-3-opus) for smaller reference lists where cost is less of a concern, or a faster model (claude-3-5-haiku) for large batches.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2 sm:col-span-2">
-                    <Label htmlFor="runName" className="text-xs-caps">Run Name</Label>
-                    <Input
-                      id="runName"
-                      value={runName}
-                      onChange={(e) => setRunName(e.target.value)}
-                      placeholder="e.g. Claude Sonnet Base Run"
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary font-medium"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      Give this run a descriptive label. This name appears in the Comparison view, saved run lists, and exported Excel files. Choose a name that clearly identifies what changed between runs.
-                    </p>
                   </div>
                 </div>
+
+                <div className="space-y-3">
+                  <Label htmlFor="runName" className="text-[10px] uppercase tracking-widest text-white/50">Run Identifier (Name)</Label>
+                  <Input
+                    id="runName"
+                    value={runName}
+                    onChange={(e) => setRunName(e.target.value)}
+                    placeholder="e.g. Initial Search 2026"
+                    className="bg-white/[0.03] border-none text-white font-mono text-sm h-12 px-4 shadow-inner focus-visible:ring-1 focus-visible:ring-blue-500 rounded-xl"
+                  />
+                </div>
               </div>
-            </Card>
+            </div>
+          </div>
 
-            {/* Criteria & Research Params */}
-            <Card className="p-6 border-border/50 bg-card/50 backdrop-blur-sm space-y-4">
-              <div>
-                <h3 className="font-medium text-lg text-foreground mb-4">
-                  Research Parameters
-                </h3>
+          {/* Bottom Section: Uploads moved to Left Column */}
+          <div className="space-y-6 pt-4 border-t border-white/5">
+            <div className="flex items-center gap-2 mb-2">
+              <FileText className="w-5 h-5 text-indigo-500" />
+              <h2 className="text-sm font-bold tracking-widest text-white uppercase">Data Sources</h2>
+            </div>
 
-                {/* Requirements Document Upload */}
-                <div className="mb-6 border border-dashed border-border/50 bg-secondary/20 rounded-lg p-5">
-                  <h4 className="text-sm font-medium mb-2">Auto-fill from Requirements Document (Optional)</h4>
-                  <p className="text-xs text-muted-foreground mb-4">Upload a PDF containing your research proposal or guidelines to automatically extract the topic and criteria.</p>
-                  <label className="cursor-pointer inline-flex">
+            {/* PDF Requirements Extractor */}
+            <div className="space-y-3">
+              <Label className="text-[10px] uppercase tracking-widest text-white/50">Auto-Fill from Protocol</Label>
+              <div className="relative group rounded-2xl p-[2px] overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+                <div className="relative h-full bg-[#0a0a0a] rounded-[14px] border border-dashed border-white/10 group-hover:border-white/20 transition-colors p-6 text-center">
+                  <label className="cursor-pointer block relative z-10 w-full h-full">
                     <input
                       type="file"
                       accept=".pdf"
@@ -244,101 +223,27 @@ export default function SetupPage() {
                       className="hidden"
                       disabled={isExtractingParams}
                     />
-                    <Button disabled={isExtractingParams} variant="secondary" size="sm" className="pointer-events-none gap-2 button-hover-lift">
-                      {isExtractingParams ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                      {isExtractingParams ? 'Extracting...' : 'Upload Requirements Document'}
-                    </Button>
+                    <div className="flex flex-col items-center justify-center gap-3">
+                      {isExtractingParams ? <Loader2 className="w-8 h-8 animate-spin text-purple-400" /> : <Upload className="w-8 h-8 text-white/40 group-hover:text-purple-400 transition-colors" />}
+                      <div>
+                        <p className="text-sm font-semibold text-white/90">{isExtractingParams ? 'Extracting protocol...' : 'Upload PDF Protocol Document'}</p>
+                        <p className="text-[10px] text-white/30 uppercase tracking-widest mt-1">Extracts Topic & Criteria via AI</p>
+                      </div>
+                    </div>
                   </label>
                 </div>
-
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="topic" className="text-xs-caps">Research Topic</Label>
-                    <Textarea
-                      id="topic"
-                      value={topic}
-                      onChange={(e) => setResearchConfig({ topic: e.target.value })}
-                      placeholder="Specific description of the review topic..."
-                      rows={2}
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary resize-none text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      Write a clear, focused description of your review topic. This is the primary context the AI uses to make inclusion decisions. Be specific enough that the AI can distinguish relevant from irrelevant papers.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="inclusionCriteria" className="text-xs-caps">Inclusion Criteria</Label>
-                    <Textarea
-                      id="inclusionCriteria"
-                      value={inclusionCriteria}
-                      onChange={(e) => setResearchConfig({ inclusionCriteria: e.target.value })}
-                      placeholder="Studies must have n > 50, peer-reviewed, etc..."
-                      rows={3}
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary resize-none text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      List the criteria a paper must meet to be included. Examples: study design (RCT, cohort), population (human adults), language (English), date range (2015–2025), outcome type (quantitative).
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="exclusionCriteria" className="text-xs-caps">Exclusion Criteria</Label>
-                    <Textarea
-                      id="exclusionCriteria"
-                      value={exclusionCriteria}
-                      onChange={(e) => setResearchConfig({ exclusionCriteria: e.target.value })}
-                      placeholder="Exclude systematic reviews, n < 50, etc..."
-                      rows={3}
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary resize-none text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      List reasons to exclude a paper. Examples: conference abstracts only, n &lt; 50 participants, pediatric or veterinary studies, non-English, grey literature.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="extractionFields" className="text-xs-caps">Extraction Fields (Step 2)</Label>
-                    <Textarea
-                      id="extractionFields"
-                      value={extractionFields}
-                      onChange={(e) => setResearchConfig({ extractionFields: e.target.value })}
-                      placeholder="e.g., Study Design, Sample Size, AI System Used, AUC"
-                      rows={2}
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary resize-none text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      Enter a comma-separated list of data fields you want the AI to extract during full-text review. These become columns in the Step 2 results table.
-                    </p>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="extraContext" className="text-xs-caps">Extra Context (Optional)</Label>
-                    <Textarea
-                      id="extraContext"
-                      value={extraContext}
-                      onChange={(e) => setResearchConfig({ extraContext: e.target.value })}
-                      placeholder="Provide any additional instructions that should guide AI decisions..."
-                      rows={2}
-                      className="bg-background/50 border-border/50 transition-smooth focus:border-primary resize-none text-sm"
-                    />
-                    <p className="text-[11px] text-muted-foreground mt-1 text-balance tracking-wide">
-                      Provide any additional instructions that should guide AI decisions but do not fit neatly into inclusion/exclusion criteria. Examples: &quot;Treat systematic reviews without meta-analysis as excluded,&quot; or &quot;Focus on prospective designs.&quot;
-                    </p>
-                  </div>
-                </div>
               </div>
-            </Card>
-          </div>
+            </div>
 
-          {/* Sidebar */}
-          <div className="space-y-6">
-            {/* File Upload */}
-            <Card className="p-6 border-border/50 border-dashed bg-card/50 backdrop-blur-sm">
-              <div className="space-y-4">
-                <h3 className="font-medium text-lg text-foreground">Upload References</h3>
-                <div className="border border-dashed border-border/50 bg-background/50 rounded-lg p-8 text-center hover:border-primary/50 transition-smooth group relative overflow-hidden">
-                  <label className="cursor-pointer block relative z-10">
+            {/* Data Import */}
+            <div className="space-y-3">
+              <Label className="flex items-center justify-between text-[10px] uppercase tracking-widest text-white/50">
+                <span>Import References</span>
+                <span className="text-blue-400 font-bold">{papers.length} LOCATED</span>
+              </Label>
+              <div className="flex gap-4">
+                <div className="flex-1 bg-white/[0.02] rounded-2xl border border-white/5 p-4 relative overflow-hidden">
+                  <label className="cursor-pointer flex flex-col items-center justify-center h-full text-center group">
                     <input
                       type="file"
                       multiple
@@ -347,129 +252,163 @@ export default function SetupPage() {
                       className="hidden"
                       disabled={isParsing}
                     />
-                    <Upload className="w-8 h-8 text-muted-foreground opacity-50 group-hover:text-primary mx-auto mb-2 transition-smooth group-hover:opacity-100" />
-                    <p className="text-sm font-medium text-foreground">
-                      {isParsing ? "Parsing file..." : "Click to upload Excel/CSV"}
-                    </p>
-                    <p className="text-[11px] text-muted-foreground mt-1 tracking-wide">
-                      Must contain Title, Author, Year, Abstract columns.
-                    </p>
+                    <Upload className="w-6 h-6 text-white/30 group-hover:text-white transition-colors mb-2" />
+                    <span className="text-xs font-medium text-white/70">CSV / Excel...</span>
                   </label>
-                  {isParsing && <div className="absolute inset-0 bg-secondary/50 flex z-0 items-center justify-center animate-pulse" />}
                 </div>
 
-                <div className="relative flex items-center py-2">
-                  <div className="flex-grow border-t border-border/50"></div>
-                  <span className="flex-shrink-0 mx-4 text-muted-foreground text-[10px] uppercase tracking-widest font-semibold">or paste</span>
-                  <div className="flex-grow border-t border-border/50"></div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="apaText" className="text-xs-caps">Paste APA references</Label>
+                <div className="flex-1 flex flex-col gap-2 relative">
                   <Textarea
                     id="apaText"
                     value={apaText}
                     onChange={(e) => setApaText(e.target.value)}
-                    placeholder="Author, A. A., & Author, B. B. (Year). Title... doi:10.xxxx/..."
-                    rows={4}
-                    className="bg-background/50 border-border/50 transition-smooth focus:border-primary resize-none text-sm font-mono"
+                    placeholder="Paste APA refs..."
+                    className="flex-1 bg-white/[0.02] border border-white/5 transition-smooth focus-visible:ring-1 focus-visible:ring-blue-500 resize-none text-[10px] text-white/70 font-mono p-3 rounded-xl"
                   />
-                  <div className="flex justify-between items-start gap-2">
-                    <p className="text-[11px] text-muted-foreground text-balance mt-1 tracking-wide">
-                      Paste plain-text APA-formatted references into the text area. The tool extracts DOIs and years automatically. Both methods can be combined.
-                    </p>
-                    <Button
-                      onClick={handlePasteRefs}
-                      disabled={apaText.trim().length === 0}
-                      variant="secondary"
-                      size="sm"
-                      className="shrink-0 button-hover-lift"
-                    >
-                      Import Text
-                    </Button>
-                  </div>
+                  <Button
+                    onClick={handlePasteRefs}
+                    disabled={apaText.trim().length === 0}
+                    className="absolute bottom-2 right-2 h-6 px-3 text-[9px] bg-blue-500/20 text-blue-400 hover:bg-blue-500 hover:text-white transition-colors gap-1"
+                  >
+                    Import
+                  </Button>
                 </div>
+              </div>
 
-                {/* Uploaded Files */}
-                {uploadedFiles.length > 0 && (
-                  <div className="space-y-2 mt-4">
-                    <p className="text-xs-caps">
-                      {uploadedFiles.length} files uploaded
-                    </p>
-                    <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-                      {uploadedFiles.map((file) => (
-                        <div
-                          key={file}
-                          className="flex items-center justify-between p-3 rounded-md bg-secondary/50 hover:bg-secondary border border-border/30 transition-smooth group"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <FileText className="w-4 h-4 text-primary flex-shrink-0" />
-                            <span className="text-xs text-foreground truncate font-mono">
-                              {file}
-                            </span>
-                          </div>
-                          <button
-                            onClick={() => removeFile(file)}
-                            className="text-xs text-muted-foreground hover:text-destructive transition-smooth opacity-0 group-hover:opacity-100"
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+              {/* Uploaded Files Tag */}
+              {uploadedFiles.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-4">
+                  {uploadedFiles.map((file) => (
+                    <div key={file} className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-mono text-white/70">
+                      <FileText className="w-3 h-3 text-blue-400" />
+                      <span className="truncate max-w-[150px]">{file}</span>
+                      <button onClick={() => removeFile(file)} className="hover:text-red-400 ml-1">×</button>
                     </div>
-                  </div>
-                )}
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+      </div>
+
+      {/* Right Column: Research Parameters */}
+      <div className="space-y-6">
+        <div className="flex items-center gap-2 mb-2">
+          <FileSearch className="w-5 h-5 text-purple-500" />
+          <h2 className="text-sm font-bold tracking-widest text-white uppercase">Research Parameters</h2>
+        </div>
+
+        <div className="grid gap-6">
+
+          {/* 1. Topic Area Card */}
+          <Card className="bg-[#0a0a0a]/80 backdrop-blur-xl border-none shadow-2xl p-6 rounded-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-transparent opacity-50" />
+            <div className="relative z-10 space-y-4">
+              <Label htmlFor="topic" className="text-[10px] uppercase tracking-widest text-blue-400 font-bold">1. Research Topic Core</Label>
+              <Textarea
+                id="topic"
+                value={topic}
+                onChange={(e) => setResearchConfig({ topic: e.target.value })}
+                placeholder="Describe the specific goal of the review in detail..."
+                className="min-h-[100px] bg-white/[0.03] border border-white/5 shadow-inner transition-smooth focus-visible:ring-1 focus-visible:ring-blue-500 resize-none text-sm text-white/90 p-4 rounded-xl"
+              />
+            </div>
+          </Card>
+
+          {/* 2. Inclusion Criteria Card */}
+          <Card className="bg-[#0a0a0a]/80 backdrop-blur-xl border-none shadow-2xl p-6 rounded-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-green-500/5 to-transparent opacity-50" />
+            <div className="relative z-10 space-y-4">
+              <Label htmlFor="inclusionCriteria" className="text-[10px] uppercase tracking-widest text-green-400 font-bold">2. Inclusion Requirements</Label>
+              <Textarea
+                id="inclusionCriteria"
+                value={inclusionCriteria}
+                onChange={(e) => setResearchConfig({ inclusionCriteria: e.target.value })}
+                placeholder="List specific requirements studies must meet to be included..."
+                className="min-h-[100px] bg-white/[0.03] border border-white/5 shadow-inner transition-smooth focus-visible:ring-1 focus-visible:ring-green-500 resize-none text-sm text-white/90 p-4 rounded-xl"
+              />
+            </div>
+          </Card>
+
+          {/* 3. Exclusion Criteria Card */}
+          <Card className="bg-[#0a0a0a]/80 backdrop-blur-xl border-none shadow-2xl p-6 rounded-2xl relative overflow-hidden group">
+            <div className="absolute inset-0 bg-gradient-to-br from-red-500/5 to-transparent opacity-50" />
+            <div className="relative z-10 space-y-4">
+              <Label htmlFor="exclusionCriteria" className="text-[10px] uppercase tracking-widest text-red-400 font-bold">3. Exclusion Rules</Label>
+              <Textarea
+                id="exclusionCriteria"
+                value={exclusionCriteria}
+                onChange={(e) => setResearchConfig({ exclusionCriteria: e.target.value })}
+                placeholder="List clear rules for why a study should be immediately excluded..."
+                className="min-h-[100px] bg-white/[0.03] border border-white/5 shadow-inner transition-smooth focus-visible:ring-1 focus-visible:ring-red-500 resize-none text-sm text-white/90 p-4 rounded-xl"
+              />
+            </div>
+          </Card>
+
+          {/* 4 & 5. Extra fields */}
+          <div className="grid grid-cols-2 gap-4">
+            <Card className="bg-[#0a0a0a]/80 backdrop-blur-xl border-none shadow-2xl p-5 rounded-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-50" />
+              <div className="relative z-10 space-y-4">
+                <Label htmlFor="extractionFields" className="text-[10px] uppercase tracking-widest text-purple-400 font-bold">4. Extraction Fields <span className="text-white/30 font-normal ml-1">(Optional)</span></Label>
+                <Textarea
+                  id="extractionFields"
+                  value={extractionFields}
+                  onChange={(e) => setResearchConfig({ extractionFields: e.target.value })}
+                  placeholder="Methodology, Sample Size..."
+                  className="h-[80px] bg-white/[0.03] border border-white/5 shadow-inner transition-smooth focus-visible:ring-1 focus-visible:ring-purple-500 resize-none text-xs text-white/90 p-3 rounded-xl"
+                />
               </div>
             </Card>
 
-            {/* Summary Card */}
-            <Card className="p-6 border-border/50 bg-card/50 backdrop-blur-sm">
-              <h3 className="font-medium text-lg text-foreground mb-4">Ready Summary</h3>
-              <div className="space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-xs-caps">Papers Loaded</span>
-                  <span className="text-sm font-mono text-foreground tracking-tight">
-                    {papers.length}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs-caps">Provider</span>
-                  <span className="text-xs font-mono font-medium text-primary">
-                    {PROVIDER_NAMES[provider] || '—'}
-                  </span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-xs-caps">API Key provided</span>
-                  <span className="text-xs font-mono font-medium text-primary">
-                    {apiKey ? 'Yes' : 'No'}
-                  </span>
-                </div>
+            <Card className="bg-[#0a0a0a]/80 backdrop-blur-xl border-none shadow-2xl p-5 rounded-2xl relative overflow-hidden group">
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-transparent opacity-50" />
+              <div className="relative z-10 space-y-4">
+                <Label htmlFor="extraContext" className="text-[10px] uppercase tracking-widest text-purple-400 font-bold">5. Extra Context <span className="text-white/30 font-normal ml-1">(Optional)</span></Label>
+                <Textarea
+                  id="extraContext"
+                  value={extraContext}
+                  onChange={(e) => setResearchConfig({ extraContext: e.target.value })}
+                  placeholder="Any specific instructions..."
+                  className="h-[80px] bg-white/[0.03] border border-white/5 shadow-inner transition-smooth focus-visible:ring-1 focus-visible:ring-purple-500 resize-none text-xs text-white/90 p-3 rounded-xl"
+                />
               </div>
-
-              {papers.length > 0 && (
-                <div className="mt-6 p-3 bg-green-500/10 border border-green-500/20 rounded-md text-green-500 text-xs uppercase tracking-widest font-semibold text-center">
-                  {papers.length} papers loaded
-                </div>
-              )}
             </Card>
           </div>
         </div>
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-6 border-t border-border">
-          <Button variant="outline" className="border-border hover:bg-secondary" onClick={() => router.push('/')}>
-            Back to Dashboard
-          </Button>
-          <Button
-            onClick={startReview}
-            disabled={!isFormValid}
-            className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md disabled:opacity-50 disabled:cursor-not-allowed transition-smooth"
-          >
-            Begin Abstract Screening
-            <ChevronRight className="w-4 h-4" />
-          </Button>
-        </div>
       </div>
-    </LayoutWrapper>
+    </form>
+
+          </div >
+
+    {/* Global Action Footer */ }
+    < div className = "fixed bottom-0 left-0 right-0 bg-[#000000]/80 backdrop-blur-xl border-t border-white/10 p-4 md:pl-72 z-40 transform translate-y-0" >
+      <div className="max-w-[1600px] mx-auto flex items-center justify-between px-6">
+        <div className="flex items-center gap-3">
+          {isFormValid ? (
+            <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-green-400 font-bold bg-green-400/10 px-3 py-1.5 rounded-full">
+              <CheckCircle2 className="w-3 h-3" /> Ready for Screening
+            </span>
+          ) : (
+            <span className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-yellow-400 font-bold bg-yellow-400/10 px-3 py-1.5 rounded-full">
+              Missing Configuration
+            </span>
+          )}
+        </div>
+
+        <Button
+          onClick={startReview}
+          disabled={!isFormValid}
+          className="h-12 px-8 gap-3 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-widest text-xs shadow-[0_0_20px_rgba(255,255,255,0.15)] transition-all hover:scale-105 active:scale-95 rounded-full disabled:opacity-50 disabled:shadow-none"
+        >
+          Save & Proceed
+          <ChevronRight className="w-4 h-4" />
+        </Button>
+      </div>
+        </div >
+
+
+      </div >
+    </LayoutWrapper >
   );
 }

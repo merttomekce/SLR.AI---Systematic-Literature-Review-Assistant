@@ -1,7 +1,6 @@
 'use client';
 
 import {
-    BookOpen,
     ArrowRight,
     Network,
     Database,
@@ -16,6 +15,7 @@ import { SetupPreview } from '@/components/previews/setup-preview';
 import { ScreeningPreview } from '@/components/previews/screening-preview';
 import { ExtractionPreview } from '@/components/previews/extraction-preview';
 import { ComparisonPreview } from '@/components/previews/comparison-preview';
+import { Logo } from '@/components/logo';
 
 export default function FeaturesPage() {
     const router = useRouter();
@@ -33,37 +33,39 @@ export default function FeaturesPage() {
             <InteractiveBackground />
 
             {/* Navigation */}
-            <nav className="sticky top-0 z-50 w-full border-b border-white/5 bg-[#050505]/80 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-1000 fill-mode-both">
-                <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <Link href="/" className="flex items-center gap-2 cursor-pointer h-full">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black">
-                            <BookOpen className="w-5 h-5 font-bold" />
-                        </div>
-                        <span className="text-white text-base font-bold tracking-tight">SLR AI</span>
+            <nav className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-[#050505]/80 backdrop-blur-xl">
+                <div className="max-w-[1200px] mx-auto px-6 h-14 flex items-center justify-between">
+                    <Link href="/" className="flex items-center gap-2.5 text-white transition-opacity hover:opacity-80">
+                        <Logo className="w-5 h-5 text-white" />
+                        <span className="text-base font-semibold tracking-tight text-white var(--font-outfit) font-outfit">SLR AI</span>
                     </Link>
 
-                    <div className="hidden md:flex items-center gap-8">
-                        <Link href="/features" className="text-white text-sm font-medium relative py-1 after:absolute after:bottom-0 after:left-0 after:h-[1px] after:w-full after:bg-white/50 after:shadow-[0_0_8px_rgba(255,255,255,0.8)]">Features</Link>
-                        <a href="https://github.com/merttomekce/SLR.AI---Systematic-Literature-Review-Assistant" target="_blank" rel="noopener noreferrer" className="text-slate-400 text-sm font-medium hover:text-white transition-colors duration-200">Docs</a>
-                    </div>
+                    <div className="flex items-center gap-6">
+                        <div className="hidden md:flex items-center gap-6">
+                            <Link href="/features" className="text-[13px] font-medium text-white transition-colors duration-200">Features</Link>
+                            <a href="https://github.com/merttomekce/SLR.AI---Systematic-Literature-Review-Assistant" target="_blank" rel="noopener noreferrer" className="text-[13px] font-medium text-[#8A8F98] hover:text-white transition-colors duration-200">Docs</a>
+                        </div>
 
-                    <div className="flex items-center gap-4">
-                        <Link href="/sign-in" className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer">
-                            Sign In
-                        </Link>
-                        {hasAnyRuns ? (
-                            <Link href="/dashboard">
-                                <button className="bg-white hover:bg-slate-200 transition-colors text-black text-xs font-semibold px-4 py-2 rounded h-9 flex items-center justify-center hover:scale-105 active:scale-95 duration-200">
-                                    Go to Dashboard
-                                </button>
+                        <div className="hidden md:block w-px h-3 bg-[#333333] mx-1" />
+
+                        <div className="flex items-center gap-4">
+                            <Link href="/sign-in" className="hidden sm:block text-[13px] font-medium text-[#8A8F98] hover:text-white transition-colors cursor-pointer">
+                                Log in
                             </Link>
-                        ) : (
-                            <Link href="/sign-up">
-                                <button className="bg-white hover:bg-slate-200 transition-colors text-black text-xs font-semibold px-4 py-2 rounded h-9 flex items-center justify-center hover:scale-105 active:scale-95 duration-200">
-                                    Get Started
-                                </button>
-                            </Link>
-                        )}
+                            {hasAnyRuns ? (
+                                <Link href="/dashboard">
+                                    <button className="flex h-8 items-center justify-center rounded-[6px] bg-[#EEEEEE] px-3.5 text-[13px] font-medium text-black transition-all hover:bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+                                        Dashboard
+                                    </button>
+                                </Link>
+                            ) : (
+                                <Link href="/sign-up">
+                                    <button className="flex h-8 items-center justify-center rounded-[6px] bg-[#EEEEEE] px-3.5 text-[13px] font-medium text-black transition-all hover:bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+                                        Sign up
+                                    </button>
+                                </Link>
+                            )}
+                        </div>
                     </div>
                 </div>
             </nav>
@@ -240,11 +242,11 @@ export default function FeaturesPage() {
 
             <footer className="border-t border-white/5 py-12 px-6 bg-[#050505]">
                 <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-center gap-6">
-                    <div className="flex items-center gap-2 opacity-50">
-                        <div className="size-4 text-white">
-                            <BookOpen className="w-4 h-4" />
+                    <div className="flex items-center gap-2 opacity-80">
+                        <div className="size-5 text-white">
+                            <Logo className="w-5 h-5" />
                         </div>
-                        <span className="text-white text-sm font-semibold">SLR AI</span>
+                        <span className="text-white text-sm font-bold tracking-tight var(--font-outfit) font-outfit">SLR AI</span>
                     </div>
                     <div className="flex gap-6 text-sm text-slate-500">
                         <a className="hover:text-white transition-colors cursor-pointer">Privacy</a>

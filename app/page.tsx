@@ -19,6 +19,7 @@ import { useReviewStore } from '@/store/useReviewStore';
 import { useRouter } from 'next/navigation';
 import { InteractiveBackground } from '@/components/interactive-background';
 import { InteractiveDashboardPreview } from '@/components/previews/interactive-dashboard-preview';
+import { Logo } from '@/components/logo';
 
 export default function LandingPage() {
     const router = useRouter();
@@ -36,35 +37,39 @@ export default function LandingPage() {
             <InteractiveBackground />
 
             {/* Sticky Navigation */}
-            <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-black/70 backdrop-blur-md animate-in fade-in slide-in-from-top-4 duration-1000 fill-mode-both">
-                <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
-                    <div className="flex items-center gap-2 text-white">
-                        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white text-black">
-                            <BookOpen className="w-5 h-5 font-bold" />
+            <header className="sticky top-0 z-50 w-full border-b border-white/[0.08] bg-black/60 backdrop-blur-xl">
+                <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between px-6">
+                    <Link href="/" className="flex items-center gap-2.5 text-white transition-opacity hover:opacity-80">
+                        <Logo className="w-5 h-5 text-white" />
+                        <span className="text-base font-semibold tracking-tight text-white var(--font-outfit) font-outfit">SLR AI</span>
+                    </Link>
+
+                    <div className="flex items-center gap-6">
+                        <nav className="hidden md:flex items-center gap-6">
+                            <Link href="/features" className="text-[13px] font-medium text-[#8A8F98] hover:text-white transition-colors duration-200">Features</Link>
+                            <a href="https://github.com/merttomekce/SLR.AI---Systematic-Literature-Review-Assistant" target="_blank" rel="noopener noreferrer" className="text-[13px] font-medium text-[#8A8F98] hover:text-white transition-colors duration-200">Docs</a>
+                        </nav>
+
+                        <div className="hidden md:block w-px h-3 bg-[#333333] mx-1" />
+
+                        <div className="flex items-center gap-4">
+                            <Link href="/sign-in" className="hidden sm:block text-[13px] font-medium text-[#8A8F98] hover:text-white transition-colors cursor-pointer">
+                                Log in
+                            </Link>
+                            {hasAnyRuns ? (
+                                <Link href="/dashboard">
+                                    <button className="flex h-8 items-center justify-center rounded-[6px] bg-[#EEEEEE] px-3.5 text-[13px] font-medium text-black transition-all hover:bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+                                        Dashboard
+                                    </button>
+                                </Link>
+                            ) : (
+                                <Link href="/sign-up">
+                                    <button className="flex h-8 items-center justify-center rounded-[6px] bg-[#EEEEEE] px-3.5 text-[13px] font-medium text-black transition-all hover:bg-white active:scale-95 shadow-[0_1px_2px_rgba(0,0,0,0.1)]">
+                                        Sign up
+                                    </button>
+                                </Link>
+                            )}
                         </div>
-                        <span className="text-lg font-bold tracking-tight">SLR AI</span>
-                    </div>
-                    <nav className="hidden md:flex items-center gap-8">
-                        <Link href="/features" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Features</Link>
-                        <a href="https://github.com/merttomekce/SLR.AI---Systematic-Literature-Review-Assistant" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Docs</a>
-                    </nav>
-                    <div className="flex items-center gap-4">
-                        <Link href="/sign-in" className="hidden sm:block text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer">
-                            Sign In
-                        </Link>
-                        {hasAnyRuns ? (
-                            <Link href="/dashboard">
-                                <button className="flex h-9 items-center justify-center rounded bg-white px-4 text-sm font-semibold text-black transition-transform hover:scale-105 active:scale-95">
-                                    Go to Dashboard
-                                </button>
-                            </Link>
-                        ) : (
-                            <Link href="/sign-up">
-                                <button className="flex h-9 items-center justify-center rounded bg-white px-4 text-sm font-semibold text-black transition-transform hover:scale-105 active:scale-95">
-                                    Get Started
-                                </button>
-                            </Link>
-                        )}
                     </div>
                 </div>
             </header>
@@ -231,8 +236,8 @@ export default function LandingPage() {
                 <div className="mx-auto flex max-w-[1200px] flex-col gap-12 px-6 md:flex-row md:justify-between">
                     <div className="flex flex-col gap-4 max-w-xs">
                         <div className="flex items-center gap-2 text-white">
-                            <BookOpen className="w-5 h-5" />
-                            <span className="text-lg font-bold">SLR AI</span>
+                            <Logo className="w-5 h-5 font-bold" />
+                            <span className="text-lg font-bold var(--font-outfit) font-outfit">SLR AI</span>
                         </div>
                         <p className="text-sm text-slate-500">
                             The standard for AI-assisted systematic literature reviews. Built for accuracy, designed for speed.

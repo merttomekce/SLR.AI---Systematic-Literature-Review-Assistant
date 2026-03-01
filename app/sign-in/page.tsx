@@ -1,6 +1,7 @@
 'use client';
 
-import { BookOpen, ArrowRight } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
+import { Logo } from '@/components/logo';
 import Link from 'next/link';
 import { InteractiveBackground } from '@/components/interactive-background';
 
@@ -17,11 +18,11 @@ export default function SignInPage() {
 
                 {/* Logo & Header */}
                 <Link href="/" className="flex flex-col items-center gap-4 cursor-pointer group animate-in fade-in slide-in-from-top-8 duration-1000 fill-mode-both">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-white text-black transition-transform duration-300 group-hover:scale-110 group-active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
-                        <BookOpen className="w-6 h-6 font-bold" />
+                    <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-transparent transition-transform duration-300 group-hover:scale-110 group-active:scale-95 shadow-[0_0_30px_rgba(255,255,255,0.2)]">
+                        <Logo className="w-12 h-12" />
                     </div>
                     <div className="text-center">
-                        <h1 className="text-xl font-semibold text-white tracking-tight">Welcome back</h1>
+                        <h1 className="text-xl font-semibold text-white tracking-tight var(--font-outfit) font-outfit">Welcome back</h1>
                         <p className="text-sm text-slate-400 mt-1">Sign in to your account to continue</p>
                     </div>
                 </Link>

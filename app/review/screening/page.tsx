@@ -1,31 +1,18 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { LayoutWrapper } from '@/components/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
-  CheckCircle2,
-  XCircle,
-  HelpCircle,
-  Play,
-  RotateCcw,
-  Loader2,
-  Info,
-  Pause,
-  AlertCircle,
-  TrendingUp,
-  BarChart3,
-  Download,
-  ChevronRight
+  CheckCircle2, XCircle, HelpCircle, Play, RotateCcw,
+  Loader2, Info, Pause, TrendingUp, BarChart3, Download, ChevronRight, Activity, FileText
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { exportToExcel } from '@/lib/fileParser';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useReviewStore, Decision } from '@/store/useReviewStore';
 
 export default function ScreeningPage() {
@@ -39,9 +26,9 @@ export default function ScreeningPage() {
   const toggleS1ProcessingLoop = useReviewStore((state) => state.toggleS1ProcessingLoop);
 
   const [activeFilter, setActiveFilter] = useState<string>('All');
+  const [selectedPaperId, setSelectedPaperId] = useState<string | null>(null);
 
   useEffect(() => {
-    // If we land here and no S1 run exists, but we have base papers, start one
     if (!currentS1Run && basePapers.length > 0) {
       startS1Run();
     }
@@ -53,9 +40,20 @@ export default function ScreeningPage() {
   const progress = stats.total > 0 ? ((stats.total - pending) / stats.total) * 100 : 0;
 
   const inclusionRate = stats.total > 0 ? ((stats.included / stats.total) * 100).toFixed(1) : '0.0';
-  const exclusionRate = stats.total > 0 ? ((stats.excluded / stats.total) * 100).toFixed(1) : '0.0';
 
   const isComplete = pending === 0 && stats.total > 0;
+
+  // Auto-select the analyzing paper or the first available one
+  useEffect(() => {
+    const analyzing = papers.find(p => p.s1Decision === 'ANALYZING');
+    if (analyzing) {
+      setSelectedPaperId(analyzing.id);
+    } else if (!selectedPaperId && papers.length > 0) {
+      setSelectedPaperId(papers[0].id);
+    }
+  }, [papers, selectedPaperId]);
+
+  const selectedPaper = papers.find(p => p.id === selectedPaperId) || papers[0];
 
   const handleExport = () => {
     if (!currentS1Run) return;
@@ -106,296 +104,242 @@ export default function ScreeningPage() {
     toast.success(`Decision manually overridden to ${decision}`);
   };
 
-  function renderDecisionBadge(decision: Decision | undefined) {
-    if (decision === 'INCLUDED') return <Badge className="bg-green-500/10 text-green-600 border-green-200"><CheckCircle2 className="w-3 h-3 mr-1" /> Included</Badge>;
-    if (decision === 'EXCLUDED') return <Badge className="bg-red-500/10 text-red-600 border-red-200"><XCircle className="w-3 h-3 mr-1" /> Excluded</Badge>;
-    if (decision === 'NOT ACCESSIBLE') return <Badge className="bg-yellow-500/10 text-yellow-600 border-yellow-200"><HelpCircle className="w-3 h-3 mr-1" /> Not Accessible</Badge>;
-    if (decision === 'ANALYZING') return <Badge className="bg-primary/10 text-primary border-primary/20"><Loader2 className="w-3 h-3 mr-1 animate-spin" /> Analyzing</Badge>;
-    return <Badge variant="outline" className="text-muted-foreground border-border">Pending</Badge>;
-  }
-
-  function renderRelevancy(relevancy: number | undefined) {
-    if (!relevancy) return <span className="text-muted-foreground text-xs">N/A</span>;
-    return (
-      <div className="flex gap-0.5" title={`Relevancy: ${relevancy} / 5`}>
-        {[1, 2, 3, 4, 5].map((val) => (
-          <div key={val} className={`w-2 h-2 rounded-full ${val <= relevancy ? 'bg-purple-500' : 'bg-muted'}`} />
-        ))}
-      </div>
-    );
+  function renderDecisionColor(decision: Decision | undefined) {
+    if (decision === 'INCLUDED') return 'text-green-400 bg-green-400/10 border-green-500/20';
+    if (decision === 'EXCLUDED') return 'text-red-400 bg-red-400/10 border-red-500/20';
+    if (decision === 'NOT ACCESSIBLE') return 'text-yellow-400 bg-yellow-400/10 border-yellow-500/20';
+    if (decision === 'ANALYZING') return 'text-blue-400 bg-blue-400/10 border-blue-500/20';
+    return 'text-white/50 bg-white/5 border-white/10';
   }
 
   return (
     <LayoutWrapper
-      headerTitle="Abstract Screening (Step 1)"
-      headerDescription={
-        <span className="flex items-center gap-2">
-          AI processes each paper sequentially. Results appear below in real-time.
-          <HoverCard>
-            <HoverCardTrigger className="cursor-help">
-              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-            </HoverCardTrigger>
-            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  Step 1 uses only the title, abstract, authors, year, journal, and DOI. It never receives full-text content. This mirrors the abstract screening phase in a human-conducted PRISMA review.
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        </span>
-      }
+      headerTitle="Abstract Screening"
+      headerDescription="AI-powered inclusion/exclusion analysis"
     >
-      <div className="p-6 h-[calc(100vh-80px)] flex gap-6 overflow-hidden max-w-[1600px] mx-auto animate-in fade-in duration-500">
+      <div className="p-6 h-[calc(100vh-80px)] flex flex-col overflow-hidden max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-[#000000] text-white">
 
-        {/* LEFT SIDEBAR */}
-        <div className="w-64 flex-shrink-0 flex flex-col gap-4">
-          <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm space-y-4">
-            <h3 className="font-medium text-sm text-foreground">Run Metadata</h3>
-            <div className="space-y-3 text-sm">
-              <div>
-                <p className="text-xs-caps mb-1">Total Papers</p>
-                <p className="font-mono text-foreground tracking-tight">{stats.total}</p>
-              </div>
-              <div>
-                <p className="text-xs-caps mb-1">Model</p>
-                <p className="font-medium text-foreground truncate" title={currentS1Run?.model}>{currentS1Run?.model || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-xs-caps mb-1">Run Name</p>
-                <p className="font-medium text-foreground truncate" title={currentS1Run?.name}>{currentS1Run?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-xs-caps mb-1">Saved Runs</p>
-                <p className="font-mono text-foreground tracking-tight">{savedS1Runs.length}</p>
-              </div>
+        {/* Header Bar */}
+        <div className="flex items-center justify-between mb-6 flex-shrink-0">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              {isRunning ? <span className="flex h-3 w-3 rounded-full bg-blue-500 animate-pulse shadow-[0_0_10px_rgba(59,130,246,0.8)]" /> : <span className="flex h-3 w-3 rounded-full bg-white/20" />}
+              <h2 className="text-xs uppercase tracking-widest font-bold text-white/50">{isRunning ? 'ENGINE ACTIVE' : 'ENGINE STANDBY'}</h2>
             </div>
+          </div>
+          <div className="flex items-center gap-4">
             <Button
-              onClick={() => { startS1Run(); }}
-              disabled={!isComplete && papers.length > 0}
-              variant="outline"
-              className="w-full gap-2 border-border/50"
+              onClick={toggleS1ProcessingLoop}
+              disabled={pauseTimeLeft > 0 || isComplete}
+              className={`h-10 px-6 gap-2 font-bold uppercase tracking-widest text-[10px] rounded-full shadow-[0_0_20px_rgba(255,255,255,0.1)] transition-all hover:scale-105 active:scale-95 ${isRunning ? 'bg-amber-500 hover:bg-amber-400 text-black' : 'bg-white hover:bg-white/90 text-black'}`}
             >
-              <RotateCcw className="w-4 h-4" /> Run Again
-            </Button>
-          </Card>
-
-          {/* Quality Stats (Replaced Guidelines) */}
-          <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm flex-1 overflow-y-auto space-y-4">
-            <h3 className="font-medium text-sm text-foreground">Quality Stats</h3>
-            <div className="space-y-3">
-              <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-background/50">
-                <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-500" />
-                  <span className="text-xs-caps">Inclusion Rate</span>
-                </div>
-                <span className="text-sm font-mono text-green-500 tracking-tight">{inclusionRate}%</span>
-              </div>
-              <div className="grid grid-cols-3 gap-2">
-                <div className="p-2 rounded-md border border-border/30 bg-background/50 flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest text-center mb-1">Included</span>
-                  <span className="text-lg font-mono text-green-500 tracking-tight leading-none mt-1">{stats.included}</span>
-                </div>
-                <div className="p-2 rounded-md border border-border/30 bg-background/50 flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest text-center mb-1">Excluded</span>
-                  <span className="text-lg font-mono text-destructive tracking-tight leading-none mt-1">{stats.excluded}</span>
-                </div>
-                <div className="p-2 rounded-md border border-border/30 bg-background/50 flex flex-col items-center justify-center">
-                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest text-center leading-tight mb-1">N / A</span>
-                  <span className="text-lg font-mono text-yellow-500 tracking-tight leading-none mt-1">{stats.notAccessible}</span>
-                </div>
-              </div>
-              <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-background/50">
-                <div className="flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-primary" />
-                  <span className="text-xs-caps">Pending</span>
-                </div>
-                <span className="text-sm font-mono text-foreground tracking-tight">{pending}</span>
-              </div>
-            </div>
-          </Card>
-
-          {/* Actions */}
-          <div className="space-y-2 mt-auto">
-            <Button
-              onClick={handleExport}
-              disabled={!currentS1Run}
-              variant="outline"
-              className="w-full gap-2 border-border hover:bg-secondary text-xs"
-            >
-              <Download className="w-3.5 h-3.5" /> Export Data
-            </Button>
-            <Button
-              onClick={handleProceed}
-              disabled={!isComplete || stats.included === 0}
-              className="w-full gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md text-xs relative overflow-hidden group"
-            >
-              <div className="absolute inset-0 w-full h-full bg-white/20 -translate-x-full group-hover:animate-[shimmer_1.5s_infinite]" />
-              Proceed to Full-Text <ChevronRight className="w-3.5 h-3.5" />
+              {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
+              {pauseTimeLeft > 0 ? `PAUSED (${pauseTimeLeft}s)` : (isRunning ? 'PAUSE ENGINE' : 'START ENGINE')}
             </Button>
           </div>
         </div>
 
-        {/* MAIN CONTENT AREA */}
-        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+        <div className="flex-1 flex gap-6 min-h-0">
 
-          {/* TOP: Progress & Log */}
-          <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 mr-8">
-                <div className="flex justify-between items-center mb-2">
-                  <span className="text-xs-caps">Screening Progress</span>
-                  <span className="font-mono text-[10px] text-muted-foreground">{stats.total - pending} / {stats.total} Papers</span>
-                </div>
-                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
-                  <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
+          {/* LEFT SIDEBAR: Metadata */}
+          <div className="w-[300px] flex-shrink-0 flex flex-col gap-6 overflow-y-auto pr-2 custom-scrollbar">
+            <Card className="bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-6 space-y-6">
+              <div>
+                <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-4">Run Metadata</h3>
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Total Papers</p>
+                    <p className="font-mono text-xl">{stats.total}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Model Snippet</p>
+                    <p className="font-mono text-sm text-blue-400 truncate">{currentS1Run?.model || 'N/A'}</p>
+                  </div>
+                  <div>
+                    <p className="text-[9px] text-white/40 uppercase tracking-widest mb-1">Run Name</p>
+                    <p className="font-mono text-sm truncate">{currentS1Run?.name || 'N/A'}</p>
+                  </div>
                 </div>
               </div>
-              <Button
-                onClick={toggleS1ProcessingLoop}
-                disabled={pauseTimeLeft > 0 || isComplete}
-                className={`gap-2 shadow-sm transition-smooth ${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-foreground' : 'button-hover-lift'}`}
-              >
-                {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
-                {pauseTimeLeft > 0 ? `Rate Limit Paused (${pauseTimeLeft}s)` : (isRunning ? 'Pause Process' : 'Start Screening')}
+
+              <div className="pt-6 border-t border-white/5">
+                <div className="flex justify-between items-center mb-2">
+                  <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Progress</h3>
+                  <span className="font-mono text-xs">{stats.total - pending} / {stats.total}</span>
+                </div>
+                <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 shadow-[0_0_10px_rgba(59,130,246,0.5)] transition-all duration-500" style={{ width: `${progress}%` }} />
+                </div>
+              </div>
+
+              <div className="pt-6 border-t border-white/5">
+                <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold mb-4">Stats</h3>
+                <div className="grid grid-cols-2 gap-4 text-center">
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                    <p className="text-[9px] uppercase tracking-widest text-green-400/70 mb-1">Included</p>
+                    <p className="font-mono text-xl text-green-400">{stats.included}</p>
+                  </div>
+                  <div className="bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                    <p className="text-[9px] uppercase tracking-widest text-red-400/70 mb-1">Excluded</p>
+                    <p className="font-mono text-xl text-red-400">{stats.excluded}</p>
+                  </div>
+                </div>
+                <div className="mt-4 flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-xl p-3">
+                  <span className="text-[9px] uppercase tracking-widest text-white/50">Inclusion Rate</span>
+                  <span className="font-mono text-sm text-green-400">{inclusionRate}%</span>
+                </div>
+              </div>
+
+            </Card>
+
+            {/* Actions Card */}
+            <div className="space-y-3 mt-auto pt-4">
+              <Button onClick={handleExport} disabled={!currentS1Run} variant="outline" className="w-full h-10 border-white/10 bg-transparent hover:bg-white/5 text-xs">
+                <Download className="w-4 h-4 mr-2" /> Export Log
+              </Button>
+              <Button onClick={handleProceed} disabled={!isComplete || stats.included === 0} className="w-full h-12 gap-2 bg-blue-600 hover:bg-blue-500 text-white shadow-[0_0_15px_rgba(37,99,235,0.3)] transition-all text-xs font-bold uppercase tracking-widest group">
+                Proceed to Extraction <ChevronRight className="w-4 h-4 transition-transform group-hover:translate-x-1" />
               </Button>
             </div>
+          </div>
 
-            {/* Log Console */}
-            <div className="h-24 bg-background/80 rounded border border-border/30 p-3 overflow-y-auto font-mono text-[10px] text-muted-foreground space-y-1 shadow-inner">
-              {papers.slice().reverse().filter(p => p.s1Decision && p.s1Decision !== 'PENDING').slice(0, 50).map(p => (
-                <div key={p.id}>
-                  <span className="text-muted-foreground/50">[{new Date().toLocaleTimeString()}]</span>{" "}
-                  <span className="text-muted-foreground/80">Evaluating: {p.title.substring(0, 40)}...</span>{" "}
-                  <span className={p.s1Decision === 'INCLUDED' ? 'text-green-500' : p.s1Decision === 'EXCLUDED' ? 'text-destructive' : p.s1Decision === 'ANALYZING' ? 'text-amber-500' : 'text-primary'}>
-                    -{">"} {p.s1Decision} {p.s1Decision === 'ANALYZING' && '...'}
-                  </span>
+          {/* CENTER: Active Paper & Grid */}
+          <div className="flex-1 flex flex-col gap-6 min-w-0">
+            {/* Active Paper Context */}
+            <Card className="flex-shrink-0 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-8 relative overflow-hidden flex flex-col max-h-[50%]">
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 opacity-20" />
+
+              {selectedPaper ? (
+                <>
+                  <div className="flex items-start justify-between mb-6">
+                    <div className="space-y-2">
+                      <h2 className="text-xl md:text-2xl font-bold text-white/90 leading-tight pr-4">
+                        {selectedPaper.title}
+                      </h2>
+                      <p className="text-sm font-mono text-blue-300/80">
+                        {selectedPaper.author || 'Unknown Authors'} • {selectedPaper.year || 'N/A'} • {selectedPaper.journal || 'Journal N/A'}
+                      </p>
+                    </div>
+                    <div className="flex-shrink-0 text-right">
+                      <div className={`px-4 py-1.5 rounded-full border text-[10px] uppercase tracking-widest font-bold whitespace-nowrap ${renderDecisionColor(selectedPaper.s1Decision)}`}>
+                        {selectedPaper.s1Decision || 'PENDING'}
+                      </div>
+                      {selectedPaper.s1Decision === 'ANALYZING' && (
+                        <p className="text-[9px] text-blue-400 mt-2 font-mono animate-pulse">Processing...</p>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-y-auto pr-4 custom-scrollbar space-y-4 text-sm text-white/70 leading-relaxed max-w-4xl">
+                    {selectedPaper.abstract ? (
+                      <p>{selectedPaper.abstract}</p>
+                    ) : (
+                      <p className="italic opacity-50">No abstract available for this paper.</p>
+                    )}
+
+                    {selectedPaper.s1Reason && (
+                      <div className="mt-6 p-4 rounded-xl bg-white/[0.02] border border-white/5 border-l-2 border-l-blue-500">
+                        <h4 className="text-[10px] uppercase tracking-widest text-white/50 mb-2 font-bold flex items-center gap-2"><Info className="w-3 h-3" /> AI Justification</h4>
+                        <p className="text-xs text-white/80">{selectedPaper.s1Reason}</p>
+                        {selectedPaper.s1Relevancy && (
+                          <p className="text-[10px] uppercase tracking-widest mt-2 text-blue-400/80">Relevancy Score: {selectedPaper.s1Relevancy} / 5</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Override action */}
+                  <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
+                    <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Override Decision</p>
+                    <Select
+                      value={(selectedPaper.s1Decision && selectedPaper.s1Decision !== 'ANALYZING' && selectedPaper.s1Decision !== 'PENDING') ? selectedPaper.s1Decision : ''}
+                      onValueChange={(val) => handleDecisionOverride(selectedPaper.id, val as Decision)}
+                      disabled={selectedPaper.s1Decision === 'ANALYZING'}
+                    >
+                      <SelectTrigger className="w-[180px] h-9 bg-white/[0.03] border border-white/10 text-xs font-mono rounded-lg">
+                        <SelectValue placeholder="Select outcome..." />
+                      </SelectTrigger>
+                      <SelectContent className="bg-[#111] border-white/10 text-white">
+                        <SelectItem value="INCLUDED" className="focus:bg-green-500/20 focus:text-green-400 text-xs">Include</SelectItem>
+                        <SelectItem value="EXCLUDED" className="focus:bg-red-500/20 focus:text-red-400 text-xs">Exclude</SelectItem>
+                        <SelectItem value="NOT ACCESSIBLE" className="focus:bg-yellow-500/20 focus:text-yellow-400 text-xs">Not Accessible</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </>
+              ) : (
+                <div className="flex-1 flex items-center justify-center text-white/30 text-sm">
+                  No paper selected.
                 </div>
-              ))}
-              {papers.filter(p => typeof p.s1Decision === 'string' && p.s1Decision !== 'PENDING').length === 0 && (
-                <div className="text-muted-foreground/50">System idle. Ready to begin abstract screening.</div>
               )}
-            </div>
-          </Card>
+            </Card>
 
-          {/* BOTTOM: Results Table */}
-          <Card className="flex-1 border-border/50 bg-card/50 backdrop-blur-sm flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-border/50 flex items-center justify-between">
-              <h3 className="font-medium text-sm text-foreground">Results Table</h3>
-              <div className="flex gap-1.5 p-1 rounded-lg bg-background/50 border border-border/30">
-                {['All', 'INCLUDED', 'EXCLUDED', 'NOT ACCESSIBLE', 'PENDING', 'ANALYZING'].map(filter => (
-                  <button
-                    key={filter}
-                    onClick={() => setActiveFilter(filter)}
-                    className={`px-2.5 py-1 rounded text-[9px] uppercase tracking-widest font-semibold transition-colors ${activeFilter === filter ? 'bg-secondary text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
-                  >
-                    {filter}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex-1 overflow-auto rounded-b-xl relative">
-              <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-card/80 backdrop-blur-md sticky top-0 z-10">
-                  <tr>
-                    <th className="py-2.5 px-4 w-32 whitespace-nowrap">Decision</th>
-                    <th className="py-2.5 px-4 w-72 whitespace-nowrap">Reason</th>
-                    <th className="py-2.5 px-4 w-24 whitespace-nowrap">Relevancy</th>
-                    <th className="py-2.5 px-4 whitespace-nowrap">Metadata (Title & Authors)</th>
-                    <th className="py-2.5 px-4 w-32 whitespace-nowrap text-right">Override</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {filteredPapers.map((paper) => (
-                    <tr key={paper.id} className="hover:bg-muted/30 transition-colors">
-                      <td className="py-3 px-4 align-top">
-                        {renderDecisionBadge(paper.s1Decision)}
-                      </td>
-                      <td className="py-3 px-4 align-top leading-snug">
-                        <HoverCard>
-                          <HoverCardTrigger asChild>
-                            <p className="text-[11px] text-foreground/80 line-clamp-3 cursor-pointer hover:underline decoration-muted-foreground underline-offset-2 w-fit">
-                              {paper.s1Reason || '-'}
-                            </p>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-[350px] text-xs shadow-xl border-border z-[100]">
-                            <div className="space-y-2">
-                              <h4 className="font-semibold text-foreground flex items-center gap-2 border-b border-border pb-1">
-                                <Info className="w-3 h-3" /> AI Justification
-                              </h4>
-                              <p className="text-muted-foreground leading-relaxed whitespace-pre-wrap text-left">
-                                {paper.s1Reason || 'No reason provided.'}
-                              </p>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </td>
-                      <td className="py-3 px-4 align-top">
-                        {renderRelevancy(paper.s1Relevancy)}
-                      </td>
-                      <td className="py-3 px-4 align-top max-w-[300px]">
-                        <HoverCard>
-                          <HoverCardTrigger asChild>
-                            <div className="cursor-pointer group w-fit">
-                              <div className="font-medium text-xs text-foreground line-clamp-2 group-hover:underline underline-offset-2">{paper.title}</div>
-                              <div className="text-[11px] text-muted-foreground mt-1 truncate">
-                                {paper.author || 'Unknown'} • {paper.year || 'N/A'} • {paper.journal || 'N/A'}
-                              </div>
-                            </div>
-                          </HoverCardTrigger>
-                          <HoverCardContent className="w-[450px] text-xs shadow-xl border-border max-h-[80vh] overflow-y-auto z-[100]" align="end">
-                            <div className="space-y-3">
-                              <h4 className="font-semibold text-foreground border-b border-border pb-1">Full Metadata</h4>
-                              <div className="grid grid-cols-[80px_1fr] gap-x-2 gap-y-1.5 items-start">
-                                <span className="text-muted-foreground font-medium">Title:</span> <span className="font-medium text-foreground">{paper.title || '-'}</span>
-                                <span className="text-muted-foreground font-medium">Authors:</span> <span className="text-foreground">{paper.author || '-'}</span>
-                                <span className="text-muted-foreground font-medium">Year:</span> <span className="text-foreground">{paper.year || '-'}</span>
-                                <span className="text-muted-foreground font-medium">Journal:</span> <span className="text-foreground">{paper.journal || '-'}</span>
-                                <span className="text-muted-foreground font-medium">Item Type:</span> <span className="text-foreground">{paper.itemType || '-'}</span>
-                                <span className="text-muted-foreground font-medium">ISSN:</span> <span className="text-foreground">{paper.issn || '-'}</span>
-                                <span className="text-muted-foreground font-medium">DOI:</span> <span className="text-foreground">{paper.doi || '-'}</span>
-                                <span className="text-muted-foreground font-medium">URL:</span> <span className="text-foreground break-all">{paper.url ? <a href={paper.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{paper.url}</a> : '-'}</span>
-                              </div>
-                              <div className="pt-2 border-t border-border mt-2">
-                                <span className="text-muted-foreground font-medium block mb-1">Abstract:</span>
-                                <p className="text-foreground/90 leading-relaxed whitespace-pre-wrap text-left">
-                                  {paper.abstract || 'No abstract available.'}
-                                </p>
-                              </div>
-                            </div>
-                          </HoverCardContent>
-                        </HoverCard>
-                      </td>
-                      <td className="py-3 px-4 align-top text-right">
-                        <Select
-                          value={(paper.s1Decision && paper.s1Decision !== 'ANALYZING' && paper.s1Decision !== 'PENDING') ? paper.s1Decision : ''}
-                          onValueChange={(val) => handleDecisionOverride(paper.id, val as Decision)}
-                          disabled={paper.s1Decision === 'ANALYZING'}
-                        >
-                          <SelectTrigger className="h-7 text-[10px] w-full min-w-[110px] max-w-[130px]">
-                            <SelectValue placeholder="Override..." />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="INCLUDED">Included</SelectItem>
-                            <SelectItem value="EXCLUDED">Excluded</SelectItem>
-                            <SelectItem value="NOT ACCESSIBLE">Not Accessible</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </td>
-                    </tr>
+            {/* Results Sub-grid */}
+            <Card className="flex-1 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl flex flex-col overflow-hidden min-h-0">
+              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+                <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Paper Matrix</h3>
+                <div className="flex gap-2">
+                  {['All', 'INCLUDED', 'EXCLUDED', 'PENDING', 'ANALYZING'].map(filter => (
+                    <button
+                      key={filter}
+                      onClick={() => setActiveFilter(filter)}
+                      className={`px-3 py-1 rounded-md text-[9px] uppercase tracking-widest font-bold transition-all ${activeFilter === filter ? 'bg-white/10 text-white' : 'text-white/40 hover:text-white/80 hover:bg-white/5'}`}
+                    >
+                      {filter}
+                    </button>
                   ))}
-                  {papers.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="py-8 text-center text-muted-foreground text-sm">
-                        No papers found in this run. Start by uploading references in the Setup page.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </Card>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
+                <div className="grid gap-1">
+                  {filteredPapers.map(paper => (
+                    <div
+                      key={paper.id}
+                      onClick={() => setSelectedPaperId(paper.id)}
+                      className={`cursor-pointer group flex items-center justify-between p-3 rounded-xl transition-all ${selectedPaperId === paper.id ? 'bg-white/10 border-white/20 shadow-inner' : 'bg-transparent border-transparent hover:bg-white/5 flex-row border'} border-solid`}
+                    >
+                      <div className="flex-1 min-w-0 pr-4">
+                        <p className="text-xs font-medium text-white/90 truncate">{paper.title}</p>
+                        <p className="text-[10px] text-white/40 font-mono mt-1 truncate">{paper.author || 'Unknown'}</p>
+                      </div>
+                      <div className="flex-shrink-0">
+                        <div className={`px-2 py-0.5 rounded text-[8px] uppercase tracking-widest font-bold ${renderDecisionColor(paper.s1Decision)}`}>
+                          {paper.s1Decision || 'PENDING'}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* RIGHT SIDEBAR: Live Log */}
+          <div className="w-[300px] flex-shrink-0 flex flex-col">
+            <Card className="flex-1 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-4 flex flex-col overflow-hidden">
+              <div className="flex items-center gap-2 mb-4 pb-4 border-b border-white/5">
+                <Activity className="w-4 h-4 text-purple-500" />
+                <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Live Screening Log</h3>
+              </div>
+
+              <div className="flex-1 overflow-y-auto custom-scrollbar pr-2 space-y-3 font-mono text-[10px]">
+                {papers.slice().reverse().filter(p => p.s1Decision && p.s1Decision !== 'PENDING').slice(0, 100).map(p => (
+                  <div key={p.id} className="leading-relaxed border-l-2 border-white/10 pl-3 py-1 cursor-pointer hover:border-white/30 transition-colors" onClick={() => setSelectedPaperId(p.id)}>
+                    <div className="text-white/30 mb-0.5">[{new Date().toLocaleTimeString()}]</div>
+                    <div className="text-white/80 line-clamp-2">{p.title}</div>
+                    <div className={`mt-1 font-bold ${p.s1Decision === 'INCLUDED' ? 'text-green-400' : p.s1Decision === 'EXCLUDED' ? 'text-red-400' : p.s1Decision === 'ANALYZING' ? 'text-blue-400 animate-pulse' : 'text-yellow-400'}`}>
+                      -&gt; {p.s1Decision}
+                    </div>
+                  </div>
+                ))}
+                {papers.filter(p => typeof p.s1Decision === 'string' && p.s1Decision !== 'PENDING').length === 0 && (
+                  <div className="text-white/30 text-center py-10">
+                    System idle.<br />Awaiting start command.
+                  </div>
+                )}
+              </div>
+            </Card>
+          </div>
 
         </div>
       </div>

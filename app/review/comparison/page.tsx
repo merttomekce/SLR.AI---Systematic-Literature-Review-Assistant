@@ -4,7 +4,7 @@ import { LayoutWrapper } from '@/components/layout-wrapper';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Download, FileText, CheckCircle2, AlertCircle, AlertTriangle, Info } from 'lucide-react';
+import { Download, FileText, CheckCircle2, AlertCircle, AlertTriangle, Info, Copy } from 'lucide-react';
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import Link from 'next/link';
 import { useReviewStore, Paper, Decision, ReviewRun } from '@/store/useReviewStore';
@@ -13,15 +13,11 @@ import { exportToExcel } from '@/lib/fileParser';
 export default function ComparisonPage() {
   const { savedS1Runs } = useReviewStore();
 
-  // If we only have 0 or 1 runs, there's nothing to compare. But we can still show a placeholder.
   const hasEnoughRuns = savedS1Runs.length > 1;
 
-  // Build a matrix table
-  // Each row is a paper (from the first run, assuming all runs share the same base papers mostly)
   let papersMatrix: Record<string, { title: string; decisions: Record<string, Decision | undefined> }> = {};
 
   if (hasEnoughRuns) {
-    // Collect all unique papers across all runs
     savedS1Runs.forEach(run => {
       Object.values(run.papers).forEach(p => {
         if (!papersMatrix[p.id]) {
@@ -34,20 +30,18 @@ export default function ComparisonPage() {
 
   const paperRows = Object.values(papersMatrix);
 
-  // Calculate agreement
   const getAgreement = (decisions: Record<string, Decision | undefined>) => {
     const validDecisions = Object.values(decisions).filter(d => d !== 'PENDING' && d !== 'ANALYZING' && d !== undefined);
-    if (validDecisions.length === 0) return { label: 'PENDING', badge: 'bg-muted/20 text-muted-foreground border-muted' };
+    if (validDecisions.length === 0) return { label: 'PENDING', bgClass: '', status: 'pending' };
 
-    // Check if all are the same
     const firstDecision = validDecisions[0];
     const allSame = validDecisions.every(d => d === firstDecision);
 
     if (allSame) {
       return {
         label: 'AGREE',
-        badge: 'bg-green-500/20 text-green-600 border-green-200',
-        icon: <CheckCircle2 className="w-4 h-4 mr-1 inline" />
+        bgClass: 'bg-green-500/[0.03] hover:bg-green-500/[0.05]',
+        status: 'agree'
       };
     }
 
@@ -57,15 +51,15 @@ export default function ComparisonPage() {
     if (includedCount > 0 && excludedCount > 0) {
       return {
         label: 'CONFLICT',
-        badge: 'bg-red-500/20 text-red-600 border-red-200',
-        icon: <AlertCircle className="w-4 h-4 mr-1 inline" />
+        bgClass: 'bg-red-500/[0.03] hover:bg-red-500/[0.05]',
+        status: 'conflict'
       };
     }
 
     return {
       label: 'PARTIAL',
-      badge: 'bg-amber-500/20 text-amber-600 border-amber-200',
-      icon: <AlertTriangle className="w-4 h-4 mr-1 inline" />
+      bgClass: 'bg-yellow-500/[0.03] hover:bg-yellow-500/[0.05]',
+      status: 'partial'
     };
   };
 
@@ -92,160 +86,144 @@ export default function ComparisonPage() {
     return acc;
   }, {} as Record<string, number>);
 
+  const totalEvaluated = paperRows.length;
+  const agreementPercentage = totalEvaluated > 0 ? Math.round(((agreementStats['AGREE'] || 0) / totalEvaluated) * 100) : 0;
+
   return (
     <LayoutWrapper
-      headerTitle="Run Comparison"
-      headerDescription={
-        <span className="flex items-center gap-2">
-          Compare inclusion/exclusion decisions across multiple AI models
-          <HoverCard>
-            <HoverCardTrigger className="cursor-help">
-              <Info className="w-4 h-4 text-muted-foreground hover:text-primary transition-colors" />
-            </HoverCardTrigger>
-            <HoverCardContent className="w-[300px] text-xs shadow-xl border-border z-[100] font-normal" align="start">
-              <div className="space-y-2">
-                <h4 className="font-semibold text-foreground border-b border-border pb-1">Guidelines</h4>
-                <p className="text-muted-foreground leading-relaxed">
-                  This screen compares the results of multiple independent AI screening runs evaluating the exact same base papers. Use this tool to identify where different models agree (safe to proceed) or conflict (requiring human adjudication).
-                </p>
-              </div>
-            </HoverCardContent>
-          </HoverCard>
-        </span>
-      }
+      headerTitle="Model Comparison"
+      headerDescription="Compare AI inclusion/exclusion decisions across independent runs"
     >
-      <div className="p-6 space-y-8 animate-in fade-in duration-500">
+      <div className="p-6 h-[calc(100vh-80px)] flex flex-col max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-[#000000] text-white overflow-hidden">
 
         {!hasEnoughRuns ? (
-          <Card className="p-12 text-center border-dashed border-border/50 bg-transparent shadow-none hover:shadow-none">
-            <AlertCircle className="w-12 h-12 text-muted-foreground mx-auto mb-4 opacity-50" />
-            <h3 className="text-lg font-medium text-foreground mb-2">
-              Multiple Runs Required
-            </h3>
-            <p className="text-muted-foreground mb-6">
-              To compare AI decisions, you need to save at least two runs in Step 1 using different models or prompts.
-            </p>
-            <Link href="/review/setup">
-              <Button className="gap-2 button-hover-lift">
-                Go Setup a New Run
-              </Button>
-            </Link>
-          </Card>
+          <div className="flex-1 flex items-center justify-center">
+            <Card className="p-12 text-center bg-white/[0.02] border border-white/5 backdrop-blur-sm max-w-md w-full">
+              <AlertCircle className="w-12 h-12 text-white/20 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest text-xs">
+                Multiple Runs Required
+              </h3>
+              <p className="text-sm text-white/50 mb-8 leading-relaxed">
+                To compare AI decisions, you need to save at least two runs in Step 1 using different models or prompts.
+              </p>
+              <Link href="/review/setup">
+                <Button className="w-full gap-2 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-widest text-[10px] rounded-full h-12 transition-transform hover:scale-105 active:scale-95">
+                  Initiate New Run
+                </Button>
+              </Link>
+            </Card>
+          </div>
         ) : (
-          <>
-            {/* Summary Cards */}
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card className="p-6 border-border/50 bg-card/50 backdrop-blur-sm">
-                <p className="text-xs-caps mb-1">Total Agreement (AGREE)</p>
-                <p className="text-2xl font-mono tracking-tight text-green-500">{agreementStats['AGREE'] || 0} papers</p>
-              </Card>
-              <Card className="p-6 border-border/50 bg-card/50 backdrop-blur-sm">
-                <p className="text-xs-caps mb-1">Partial / N/A (PARTIAL)</p>
-                <p className="text-2xl font-mono tracking-tight text-amber-500">{agreementStats['PARTIAL'] || 0} papers</p>
-              </Card>
-              <Card className="p-6 border-border/50 bg-card/50 backdrop-blur-sm">
-                <p className="text-xs-caps mb-1">Total Conflict (CONFLICT)</p>
-                <p className="text-2xl font-mono tracking-tight text-destructive">{agreementStats['CONFLICT'] || 0} papers</p>
-              </Card>
+          <div className="flex flex-col h-full gap-8">
+            {/* Top Stat Section */}
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 flex-shrink-0">
+              <div className="flex items-center gap-4">
+                {/* Pseudo dropdowns for models */}
+                <div className="flex gap-2 p-1.5 rounded-full bg-white/[0.02] border border-white/5">
+                  {savedS1Runs.slice(0, 3).map((run, i) => (
+                    <div key={run.id} className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full">
+                      <span className="w-2 h-2 rounded-full bg-purple-500" />
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-white/80">{run.name}</span>
+                    </div>
+                  ))}
+                  {savedS1Runs.length > 3 && (
+                    <div className="flex items-center px-4 py-2 bg-white/5 rounded-full text-[10px] text-white/50">{`+\${savedS1Runs.length - 3} MORE`}</div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex items-center gap-6">
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Conflicts</p>
+                  <p className="text-xl font-mono text-red-500">{agreementStats['CONFLICT'] || 0}</p>
+                </div>
+                <div className="h-12 w-px bg-white/10" />
+                <div className="text-right">
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Agreement Rate</p>
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl font-mono tracking-tight text-white">{agreementPercentage}%</span>
+                    <div className={`h-2 w-2 rounded-full animate-pulse \${agreementPercentage > 85 ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)]'}`} />
+                  </div>
+                </div>
+              </div>
             </div>
 
-            {/* Model Comparison Table */}
-            <Card className="flex-1 border-border/50 bg-card/50 backdrop-blur-sm flex flex-col overflow-hidden max-h-[700px]">
-              <div className="flex items-center justify-between p-4 border-b border-border/50">
-                <h3 className="font-medium text-sm text-foreground">Decision Matrix</h3>
-                <Button variant="outline" size="sm" onClick={handleExportComparison} className="gap-2 text-xs">
-                  <Download className="w-3.5 h-3.5" /> Export Excel
+            {/* DATA MATRIX TABLE */}
+            <div className="flex-1 flex flex-col bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden min-h-0 relative">
+              <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none z-20" />
+
+              <div className="flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0 relative z-10">
+                <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold flex items-center gap-2">
+                  <Copy className="w-4 h-4 text-purple-400" /> Matrix Comparison
+                </h3>
+                <Button onClick={handleExportComparison} className="h-9 px-5 gap-2 bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-widest text-[9px] rounded-full border border-white/5 transition-all">
+                  <Download className="w-3.5 h-3.5" /> Export Selection
                 </Button>
               </div>
-              <div className="overflow-x-auto flex-1 relative">
-                <table className="w-full text-sm border-collapse">
-                  <thead className="bg-card/80 backdrop-blur-md sticky top-0 z-10 border-b border-border/50">
+
+              <div className="flex-1 overflow-auto custom-scrollbar relative z-10">
+                <table className="w-full text-left text-sm border-collapse">
+                  <thead className="sticky top-0 bg-[#0a0a0a]/90 backdrop-blur-xl z-10 border-b border-white/10">
                     <tr>
-                      <th className="text-left py-3 px-4 w-1/3 text-xs-caps">
-                        Paper Title
-                      </th>
+                      <th className="py-4 px-6 w-[400px] text-[10px] uppercase tracking-widest font-bold text-white/40 whitespace-nowrap">Paper Context</th>
                       {savedS1Runs.map(run => (
-                        <th key={run.id} className="text-center py-3 px-4 text-xs-caps">
+                        <th key={run.id} className="py-4 px-6 text-center text-[10px] uppercase tracking-widest font-bold text-white/40 min-w-[150px]">
                           {run.name}
-                          <br />
-                          <span className="text-[9px] font-normal opacity-70 tracking-normal normal-case">{run.model}</span>
+                          <div className="text-[8px] font-mono text-blue-400/80 mt-1 opacity-70 tracking-normal normal-case">{run.model}</div>
                         </th>
                       ))}
-                      <th className="text-center py-3 px-4 text-xs-caps">
-                        Agreement
-                      </th>
+                      <th className="py-4 px-6 text-[10px] uppercase tracking-widest font-bold text-white/40 text-center w-32">Status</th>
                     </tr>
                   </thead>
-                  <tbody>
+                  <tbody className="divide-y divide-white/5">
                     {paperRows.map((row, idx) => {
                       const agreement = getAgreement(row.decisions);
                       return (
-                        <tr
-                          key={idx}
-                          className="border-b border-border/50 hover:bg-secondary/20 transition-smooth"
-                        >
-                          <td className="py-3 px-4 font-medium text-foreground">
-                            <span className="line-clamp-2" title={row.title}>{row.title}</span>
+                        <tr key={idx} className={`\${agreement.bgClass} transition-colors group`}>
+                          <td className="py-5 px-6 font-medium text-white/90">
+                            <span className="line-clamp-2 leading-relaxed" title={row.title}>{row.title}</span>
                           </td>
                           {savedS1Runs.map(run => {
                             const dec = row.decisions[run.id];
                             return (
-                              <td key={run.id} className="text-center py-3 px-4">
-                                <span className={`text-[10px] uppercase font-bold px-2 py-1 rounded-sm \${
-                                    dec === 'INCLUDED' ? 'bg-green-500/10 text-green-600' :
-                                    dec === 'EXCLUDED' ? 'bg-red-500/10 text-red-600' :
-                                    'bg-muted/10 text-muted-foreground'
-                                  }`}>
-                                  {dec || 'N/A'}
-                                </span>
+                              <td key={run.id} className="py-5 px-6 text-center">
+                                {dec ? (
+                                  <span className={`text-[9px] uppercase font-bold tracking-widest border px-2.5 py-1 rounded \${
+                                       dec === 'INCLUDED' ? 'bg-green-500/10 text-green-400 border-green-500/20 shadow-[0_0_10px_rgba(74,222,128,0.1)]' :
+                                       dec === 'EXCLUDED' ? 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(248,113,113,0.1)]' :
+                                       'bg-white/5 text-white/40 border-white/10'
+                                     }`}>
+                                    {dec}
+                                  </span>
+                                ) : (
+                                  <span className="text-[10px] text-white/20 font-mono">-</span>
+                                )}
                               </td>
                             )
                           })}
-                          <td className="text-center py-3 px-4">
-                            <Badge variant="outline" className={agreement.badge}>
-                              {agreement.icon}
-                              {agreement.label}
-                            </Badge>
+                          <td className="py-5 px-6 text-center">
+                            {agreement.status === 'agree' && <CheckCircle2 className="w-5 h-5 text-green-500/50 mx-auto" />}
+                            {agreement.status === 'conflict' && <AlertCircle className="w-5 h-5 text-red-500/80 mx-auto" />}
+                            {agreement.status === 'partial' && <AlertTriangle className="w-5 h-5 text-yellow-500/50 mx-auto" />}
+                            {agreement.status === 'pending' && <span className="text-white/20">-</span>}
                           </td>
                         </tr>
                       )
                     })}
+                    {paperRows.length === 0 && (
+                      <tr>
+                        <td colSpan={savedS1Runs.length + 2} className="py-12 text-center text-white/30 text-xs tracking-widest uppercase">
+                          No shared papers found.
+                        </td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
-            </Card>
+            </div>
 
-            <Card className="p-6 border-border/50 bg-secondary/30 backdrop-blur-sm space-y-4 shadow-none">
-              <div className="flex gap-3">
-                <AlertCircle className="w-5 h-5 text-muted-foreground flex-shrink-0 mt-0.5" />
-                <div>
-                  <p className="font-medium text-sm text-foreground mb-1">How to use this data</p>
-                  <p className="text-xs text-muted-foreground leading-relaxed">
-                    Papers marked as <strong className="text-foreground font-medium">AGREE</strong> can usually be safely proceeded without further manual review.
-                    Papers marked as <strong className="text-foreground font-medium">CONFLICT</strong> require human adjudication. You can return to the Gate screen and select which run's results you wish to use as the base for Step 2.
-                  </p>
-                </div>
-              </div>
-            </Card>
-          </>
-        )}
-
-        {/* Actions */}
-        <div className="flex items-center justify-between pt-4 border-t border-border">
-          <Link href="/review/fulltext">
-            <Button variant="outline" className="border-border hover:bg-secondary">
-              Go to Full-Text Review
-            </Button>
-          </Link>
-          <div className="flex gap-2">
-            <Link href="/dashboard">
-              <Button className="gap-2 bg-primary text-primary-foreground hover:bg-primary/90 shadow-md">
-                <FileText className="w-4 h-4" />
-                Back to Dashboard
-              </Button>
-            </Link>
           </div>
-        </div>
+        )}
       </div>
     </LayoutWrapper>
   );

@@ -262,8 +262,8 @@ export default function FullTextReviewPage() {
         <div className="grid gap-6 lg:grid-cols-4">
           {/* Left Sidebar - Paper List */}
           <div className="space-y-4">
-            <Card className="p-4 border-border space-y-3">
-              <p className="text-xs font-semibold text-muted-foreground uppercase flex justify-between">
+            <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm space-y-3">
+              <p className="text-xs-caps flex justify-between">
                 <span>Included in S1 ({total})</span>
                 <span>Done ({doneCount})</span>
               </p>
@@ -300,11 +300,11 @@ export default function FullTextReviewPage() {
 
           {/* Right Content - Paper Details */}
           {currentPaper ? (
-            <Card className="lg:col-span-3 border-border animate-in fade-in duration-300">
+            <Card className="lg:col-span-3 border-border/50 bg-card/50 backdrop-blur-sm animate-in fade-in duration-300">
               {/* Header */}
-              <div className="p-6 border-b border-border space-y-3 relative">
+              <div className="p-6 border-b border-border/50 space-y-3 relative">
                 <div>
-                  <h2 className="text-xl font-bold text-foreground leading-tight">
+                  <h2 className="text-xl font-medium text-foreground leading-tight">
                     {currentPaper.title}
                   </h2>
                   <p className="text-sm text-muted-foreground mt-2">
@@ -353,17 +353,17 @@ export default function FullTextReviewPage() {
                   <TabsContent value="extraction" className="space-y-4 mt-4">
                     {currentPaper.s2Status === 'REVIEWING' ? (
                       <div className="p-12 flex flex-col items-center justify-center text-primary">
-                        <div className="w-8 h-8 rounded-full border-4 border-primary border-t-transparent animate-spin mb-4" />
-                        <p className="font-medium animate-pulse">AI is reading full text...</p>
+                        <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin mb-4" />
+                        <p className="font-mono text-xs tracking-tight animate-pulse text-muted-foreground">AI is reading full text...</p>
                       </div>
                     ) : currentPaper.extractedData && Object.keys(currentPaper.extractedData).length > 0 ? (
-                      <div className="space-y-4">
+                      <div className="space-y-3">
                         {Object.entries(currentPaper.extractedData).map(([key, value]) => (
-                          <div key={key} className="space-y-1 bg-muted/30 p-4 rounded-lg border border-border">
-                            <p className="text-sm font-semibold text-foreground capitalize">
+                          <div key={key} className="space-y-1.5 p-4 rounded-lg bg-background/50 border border-border/30">
+                            <p className="text-xs-caps text-foreground">
                               {key.replace(/([A-Z])/g, ' $1').trim()}
                             </p>
-                            <div className="text-sm text-foreground/80 break-words">
+                            <div className="text-sm text-foreground/80 break-words font-mono tracking-tight text-[13px] leading-relaxed">
                               {Array.isArray(value) ? (
                                 <ul className="list-disc pl-5 mt-2 space-y-1">
                                   {value.map((v, i) => <li key={i}>{v}</li>)}
@@ -387,12 +387,12 @@ export default function FullTextReviewPage() {
                   {/* PDF Text Tab */}
                   <TabsContent value="pdftext" className="space-y-4 mt-4">
                     {pdfTexts[currentPaper.id] ? (
-                      <div className="w-full max-h-96 overflow-y-auto p-4 rounded-md bg-input border border-border text-xs font-mono text-muted-foreground whitespace-pre-wrap">
+                      <div className="w-full max-h-96 overflow-y-auto p-4 rounded-md bg-background/50 border border-border/30 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap leading-relaxed">
                         {pdfTexts[currentPaper.id].substring(0, 5000)}
-                        {pdfTexts[currentPaper.id].length > 5000 && <div className="mt-4 pt-4 border-t border-border text-center text-primary">--- Text Truncated in UI (Full text is used in AI) ---</div>}
+                        {pdfTexts[currentPaper.id].length > 5000 && <div className="mt-4 pt-4 border-t border-border/50 text-center text-primary opacity-70">--- Text Truncated in UI (Full text is used in AI) ---</div>}
                       </div>
                     ) : (
-                      <div className="p-8 rounded-lg bg-secondary/50 text-center border border-dashed border-border mb-4">
+                      <div className="p-8 rounded-lg bg-secondary/30 text-center border border-dashed border-border/50 mb-4">
                         <p className="text-sm text-muted-foreground mb-2">
                           No PDF loaded for this paper. Upload PDFs above.
                         </p>
@@ -403,8 +403,8 @@ export default function FullTextReviewPage() {
               </div>
 
               {/* Navigation */}
-              <div className="p-6 border-t border-border flex items-center justify-between">
-                <span className="text-xs text-muted-foreground">
+              <div className="p-6 border-t border-border/50 flex items-center justify-between">
+                <span className="text-xs-caps">
                   Paper {currentIndex + 1} of {papers.length}
                 </span>
                 <div className="flex gap-2">
@@ -440,9 +440,9 @@ export default function FullTextReviewPage() {
 
         {/* Bottom Actions */}
         <div className="flex flex-col sm:flex-row items-center justify-between pt-4 border-t border-border gap-4">
-          <Link href="/review/gate">
+          <Link href="/review/screening">
             <Button variant="outline" className="border-border hover:bg-secondary">
-              Back to Quality Gate
+              Back to Abstract Screening
             </Button>
           </Link>
           <div className="flex gap-2">

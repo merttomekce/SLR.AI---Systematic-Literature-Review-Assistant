@@ -151,70 +151,67 @@ export default function ScreeningPage() {
 
         {/* LEFT SIDEBAR */}
         <div className="w-64 flex-shrink-0 flex flex-col gap-4">
-          <Card className="p-4 border-border space-y-4">
-            <h3 className="font-semibold text-sm text-foreground">Run Metadata</h3>
+          <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm space-y-4">
+            <h3 className="font-medium text-sm text-foreground">Run Metadata</h3>
             <div className="space-y-3 text-sm">
               <div>
-                <p className="text-muted-foreground text-xs">Total Papers</p>
-                <p className="font-medium text-foreground">{stats.total}</p>
+                <p className="text-xs-caps mb-1">Total Papers</p>
+                <p className="font-mono text-foreground tracking-tight">{stats.total}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Model</p>
+                <p className="text-xs-caps mb-1">Model</p>
                 <p className="font-medium text-foreground truncate" title={currentS1Run?.model}>{currentS1Run?.model || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Run Name</p>
+                <p className="text-xs-caps mb-1">Run Name</p>
                 <p className="font-medium text-foreground truncate" title={currentS1Run?.name}>{currentS1Run?.name || 'N/A'}</p>
               </div>
               <div>
-                <p className="text-muted-foreground text-xs">Saved Runs</p>
-                <p className="font-medium text-foreground">{savedS1Runs.length}</p>
+                <p className="text-xs-caps mb-1">Saved Runs</p>
+                <p className="font-mono text-foreground tracking-tight">{savedS1Runs.length}</p>
               </div>
             </div>
             <Button
               onClick={() => { startS1Run(); }}
               disabled={!isComplete && papers.length > 0}
               variant="outline"
-              className="w-full gap-2 border-border"
+              className="w-full gap-2 border-border/50"
             >
               <RotateCcw className="w-4 h-4" /> Run Again
             </Button>
           </Card>
 
           {/* Quality Stats (Replaced Guidelines) */}
-          <Card className="p-4 border-border flex-1 overflow-y-auto space-y-4">
-            <h3 className="font-semibold text-sm text-foreground">Quality Stats</h3>
+          <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm flex-1 overflow-y-auto space-y-4">
+            <h3 className="font-medium text-sm text-foreground">Quality Stats</h3>
             <div className="space-y-3">
-              <div className="flex items-center justify-between p-2 rounded-md bg-green-500/10 border border-green-500/20">
+              <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-background/50">
                 <div className="flex items-center gap-2">
-                  <TrendingUp className="w-4 h-4 text-green-600" />
-                  <span className="text-xs font-medium text-green-600">Inclusion Rate</span>
+                  <TrendingUp className="w-4 h-4 text-green-500" />
+                  <span className="text-xs-caps">Inclusion Rate</span>
                 </div>
-                <span className="text-sm font-bold text-green-600">{inclusionRate}%</span>
+                <span className="text-sm font-mono text-green-500 tracking-tight">{inclusionRate}%</span>
               </div>
               <div className="grid grid-cols-3 gap-2">
-                <div className="p-2 rounded-md bg-green-500/10 border border-green-500/20 flex flex-col items-center justify-center">
-                  <CheckCircle2 className="w-4 h-4 text-green-600 mb-1" />
-                  <span className="text-[10px] font-medium text-green-600 text-center">Included</span>
-                  <span className="text-lg font-bold text-green-600 leading-none mt-1">{stats.included}</span>
+                <div className="p-2 rounded-md border border-border/30 bg-background/50 flex flex-col items-center justify-center">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest text-center mb-1">Included</span>
+                  <span className="text-lg font-mono text-green-500 tracking-tight leading-none mt-1">{stats.included}</span>
                 </div>
-                <div className="p-2 rounded-md bg-red-500/10 border border-red-500/20 flex flex-col items-center justify-center">
-                  <AlertCircle className="w-4 h-4 text-red-600 mb-1" />
-                  <span className="text-[10px] font-medium text-red-600 text-center">Excluded</span>
-                  <span className="text-lg font-bold text-red-600 leading-none mt-1">{stats.excluded}</span>
+                <div className="p-2 rounded-md border border-border/30 bg-background/50 flex flex-col items-center justify-center">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest text-center mb-1">Excluded</span>
+                  <span className="text-lg font-mono text-destructive tracking-tight leading-none mt-1">{stats.excluded}</span>
                 </div>
-                <div className="p-2 rounded-md bg-yellow-500/10 border border-yellow-500/20 flex flex-col items-center justify-center">
-                  <HelpCircle className="w-4 h-4 text-yellow-600 mb-1" />
-                  <span className="text-[10px] font-medium text-yellow-600 text-center leading-tight">Not <br /> Accessible</span>
-                  <span className="text-lg font-bold text-yellow-600 leading-none mt-1">{stats.notAccessible}</span>
+                <div className="p-2 rounded-md border border-border/30 bg-background/50 flex flex-col items-center justify-center">
+                  <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-widest text-center leading-tight mb-1">N / A</span>
+                  <span className="text-lg font-mono text-yellow-500 tracking-tight leading-none mt-1">{stats.notAccessible}</span>
                 </div>
               </div>
-              <div className="flex items-center justify-between p-2 rounded-md bg-yellow-500/10 border border-yellow-500/20">
+              <div className="flex items-center justify-between p-2 rounded-md border border-border/30 bg-background/50">
                 <div className="flex items-center gap-2">
-                  <BarChart3 className="w-4 h-4 text-yellow-600" />
-                  <span className="text-xs font-medium text-yellow-600">Pending</span>
+                  <BarChart3 className="w-4 h-4 text-primary" />
+                  <span className="text-xs-caps">Pending</span>
                 </div>
-                <span className="text-sm font-bold text-yellow-600">{pending}</span>
+                <span className="text-sm font-mono text-foreground tracking-tight">{pending}</span>
               </div>
             </div>
           </Card>
@@ -244,21 +241,21 @@ export default function ScreeningPage() {
         <div className="flex-1 flex flex-col gap-6 overflow-hidden">
 
           {/* TOP: Progress & Log */}
-          <Card className="p-4 border-border flex-shrink-0 space-y-4">
+          <Card className="p-4 border-border/50 bg-card/50 backdrop-blur-sm flex-shrink-0 space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex-1 mr-8">
-                <div className="flex justify-between text-xs mb-1">
-                  <span className="font-medium text-foreground">Screening Progress</span>
-                  <span className="text-muted-foreground">{stats.total - pending} / {stats.total} Papers</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-xs-caps">Screening Progress</span>
+                  <span className="font-mono text-[10px] text-muted-foreground">{stats.total - pending} / {stats.total} Papers</span>
                 </div>
-                <div className="h-2 w-full bg-secondary rounded-full overflow-hidden">
+                <div className="h-1.5 w-full bg-secondary rounded-full overflow-hidden">
                   <div className="h-full bg-primary transition-all duration-500 ease-out" style={{ width: `${progress}%` }} />
                 </div>
               </div>
               <Button
                 onClick={toggleS1ProcessingLoop}
                 disabled={pauseTimeLeft > 0 || isComplete}
-                className={`gap-2 shadow-md transition-smooth ${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-primary text-primary-foreground hover:bg-primary/90'}`}
+                className={`gap-2 shadow-sm transition-smooth ${isRunning ? 'bg-amber-500 hover:bg-amber-600 text-foreground' : 'button-hover-lift'}`}
               >
                 {pauseTimeLeft > 0 ? <Loader2 className="w-4 h-4 animate-spin" /> : (isRunning ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />)}
                 {pauseTimeLeft > 0 ? `Rate Limit Paused (${pauseTimeLeft}s)` : (isRunning ? 'Pause Process' : 'Start Screening')}
@@ -266,47 +263,47 @@ export default function ScreeningPage() {
             </div>
 
             {/* Log Console */}
-            <div className="h-24 bg-black/90 dark:bg-black rounded-md border border-neutral-800 p-3 overflow-y-auto font-mono text-[11px] text-green-400 space-y-1">
+            <div className="h-24 bg-background/80 rounded border border-border/30 p-3 overflow-y-auto font-mono text-[10px] text-muted-foreground space-y-1 shadow-inner">
               {papers.slice().reverse().filter(p => p.s1Decision && p.s1Decision !== 'PENDING').slice(0, 50).map(p => (
                 <div key={p.id}>
-                  <span className="text-neutral-500">[{new Date().toLocaleTimeString()}]</span>{" "}
-                  <span className="text-neutral-300">Evaluating: {p.title.substring(0, 40)}...</span>{" "}
-                  <span className={p.s1Decision === 'INCLUDED' ? 'text-green-500' : p.s1Decision === 'EXCLUDED' ? 'text-red-500' : p.s1Decision === 'ANALYZING' ? 'text-yellow-500' : 'text-neutral-400'}>
+                  <span className="text-muted-foreground/50">[{new Date().toLocaleTimeString()}]</span>{" "}
+                  <span className="text-muted-foreground/80">Evaluating: {p.title.substring(0, 40)}...</span>{" "}
+                  <span className={p.s1Decision === 'INCLUDED' ? 'text-green-500' : p.s1Decision === 'EXCLUDED' ? 'text-destructive' : p.s1Decision === 'ANALYZING' ? 'text-amber-500' : 'text-primary'}>
                     -{">"} {p.s1Decision} {p.s1Decision === 'ANALYZING' && '...'}
                   </span>
                 </div>
               ))}
               {papers.filter(p => typeof p.s1Decision === 'string' && p.s1Decision !== 'PENDING').length === 0 && (
-                <div className="text-neutral-500">System idle. Ready to begin abstract screening.</div>
+                <div className="text-muted-foreground/50">System idle. Ready to begin abstract screening.</div>
               )}
             </div>
           </Card>
 
           {/* BOTTOM: Results Table */}
-          <Card className="flex-1 border-border flex flex-col overflow-hidden">
-            <div className="p-3 border-b border-border bg-muted/30 flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Results Table</h3>
-              <div className="flex gap-2">
+          <Card className="flex-1 border-border/50 bg-card/50 backdrop-blur-sm flex flex-col overflow-hidden">
+            <div className="p-3 border-b border-border/50 flex items-center justify-between">
+              <h3 className="font-medium text-sm text-foreground">Results Table</h3>
+              <div className="flex gap-1.5 p-1 rounded-lg bg-background/50 border border-border/30">
                 {['All', 'INCLUDED', 'EXCLUDED', 'NOT ACCESSIBLE', 'PENDING', 'ANALYZING'].map(filter => (
                   <button
                     key={filter}
                     onClick={() => setActiveFilter(filter)}
-                    className={`px-2 py-1 rounded-md text-[10px] uppercase tracking-wider font-semibold transition-colors ${activeFilter === filter ? 'bg-primary text-primary-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:bg-muted'}`}
+                    className={`px-2.5 py-1 rounded text-[9px] uppercase tracking-widest font-semibold transition-colors ${activeFilter === filter ? 'bg-secondary text-foreground shadow-sm' : 'bg-transparent text-muted-foreground hover:text-foreground'}`}
                   >
                     {filter}
                   </button>
                 ))}
               </div>
             </div>
-            <div className="flex-1 overflow-auto rounded-b-xl">
+            <div className="flex-1 overflow-auto rounded-b-xl relative">
               <table className="w-full text-left text-sm border-collapse">
-                <thead className="bg-[#121212] sticky top-0 z-10 text-[11px] uppercase text-muted-foreground shadow-sm">
+                <thead className="bg-card/80 backdrop-blur-md sticky top-0 z-10">
                   <tr>
-                    <th className="py-2 px-4 font-semibold w-32 whitespace-nowrap tracking-wider">Decision</th>
-                    <th className="py-2 px-4 font-semibold w-72 whitespace-nowrap tracking-wider">Reason</th>
-                    <th className="py-2 px-4 font-semibold w-24 whitespace-nowrap tracking-wider">Relevancy</th>
-                    <th className="py-2 px-4 font-semibold whitespace-nowrap tracking-wider">Metadata (Title & Authors)</th>
-                    <th className="py-2 px-4 font-semibold w-32 whitespace-nowrap tracking-wider text-right">Override</th>
+                    <th className="py-2.5 px-4 w-32 whitespace-nowrap">Decision</th>
+                    <th className="py-2.5 px-4 w-72 whitespace-nowrap">Reason</th>
+                    <th className="py-2.5 px-4 w-24 whitespace-nowrap">Relevancy</th>
+                    <th className="py-2.5 px-4 whitespace-nowrap">Metadata (Title & Authors)</th>
+                    <th className="py-2.5 px-4 w-32 whitespace-nowrap text-right">Override</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border">

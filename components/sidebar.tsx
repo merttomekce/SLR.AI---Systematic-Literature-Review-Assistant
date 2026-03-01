@@ -25,7 +25,7 @@ interface NavItem {
 const navItems: NavItem[] = [
   {
     title: 'Dashboard',
-    href: '/',
+    href: '/dashboard',
     icon: <BarChart3 className="w-5 h-5" />,
     description: 'View your reviews',
   },
@@ -75,12 +75,14 @@ export function Sidebar() {
         <div className="p-6 space-y-8">
           {/* Logo/Title */}
           <div className="space-y-2">
-            <h1 className="text-xl font-semibold text-sidebar-foreground flex items-center gap-2">
-              <div className="w-8 h-8 rounded bg-sidebar-primary/20 flex items-center justify-center">
-                <BookOpen className="w-4 h-4 text-sidebar-primary" />
-              </div>
-              SLR AI
-            </h1>
+            <Link href="/" className="inline-block transition-transform hover:scale-105 active:scale-95">
+              <h1 className="text-xl font-semibold text-sidebar-foreground flex items-center gap-2">
+                <div className="w-8 h-8 rounded bg-sidebar-primary/20 flex items-center justify-center">
+                  <BookOpen className="w-4 h-4 text-sidebar-primary" />
+                </div>
+                SLR AI
+              </h1>
+            </Link>
             <p className="text-xs text-sidebar-foreground/60">Systematic Literature Review</p>
           </div>
 

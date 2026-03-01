@@ -306,3 +306,57 @@ No markdown backticks, just raw JSON.`;
         throw error;
     }
 }
+
+export interface ExtractedParameters {
+    topic: string;
+    inclusionCriteria: string;
+    exclusionCriteria: string;
+    extractionFields: string;
+    extraContext: string;
+}
+
+export async function extractResearchParameters(
+    text: string,
+    config: { provider: string; model: string; apiKey: string }
+): Promise<ExtractedParameters> {
+    const systemPrompt = `You are an expert academic researcher who is setting up a Systematic Literature Review (SLR). 
+Your task is to analyze the provided Requirements Document text and extract the key research parameters needed to configure an AI screening tool.
+
+You must return strictly a single valid JSON object with the following structure and no additional text or markdown backticks:
+{
+  "topic": "A clear, concise 1-2 sentence description of the research topic or research question.",
+  "inclusionCriteria": "A bulleted or numbered list of criteria a paper MUST meet to be included.",
+  "exclusionCriteria": "A bulleted or numbered list of reasons to definitively exclude a paper.",
+  "extractionFields": "A comma-separated list of specific data points or metrics that need to be extracted from the full text of included papers (e.g., Study Design, Sample Size, Outcomes).",
+  "extraContext": "Any other important context, definitions, or instructions for the reviewer found in the document that doesn't fit neatly into the criteria above."
+}
+
+If any field is completely missing from the document, provide an empty string for that field, but try your best to infer the research topic from the document title or abstract.`;
+
+    const userPrompt = `Requirements Document Text:\n\n${text.slice(0, 100000)}`;
+
+    try {
+        const textResp = await executeLLM({
+            provider: config.provider,
+            model: config.model,
+            apiKey: config.apiKey,
+            systemPrompt,
+            userPrompt: config.provider === 'anthropic' ? userPrompt + "\n\nProvide JUST the raw JSON object, starting with { and ending with }." : userPrompt
+        });
+
+        const match = textResp.match(/\{[\s\S]*\}/);
+        const jsonStr = match ? match[0] : textResp;
+        const result = JSON.parse(jsonStr);
+
+        return {
+            topic: result.topic || '',
+            inclusionCriteria: result.inclusionCriteria || '',
+            exclusionCriteria: result.exclusionCriteria || '',
+            extractionFields: result.extractionFields || '',
+            extraContext: result.extraContext || ''
+        };
+    } catch (error) {
+        console.error("Parameter Extraction LLM Error:", error);
+        throw error;
+    }
+}

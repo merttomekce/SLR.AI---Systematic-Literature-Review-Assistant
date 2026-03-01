@@ -17,6 +17,7 @@ import {
 import Link from 'next/link';
 import { useReviewStore } from '@/store/useReviewStore';
 import { useRouter } from 'next/navigation';
+import { InteractiveBackground } from '@/components/interactive-background';
 
 export default function LandingPage() {
     const router = useRouter();
@@ -31,6 +32,8 @@ export default function LandingPage() {
             <div className="fixed top-0 left-1/2 -translate-x-1/2 w-[1000px] h-[600px] bg-purple-900/20 blur-[120px] rounded-full pointer-events-none z-0 opacity-40 mix-blend-screen" />
             <div className="fixed bottom-0 right-0 w-[800px] h-[500px] bg-indigo-900/10 blur-[100px] rounded-full pointer-events-none z-0 opacity-30" />
 
+            <InteractiveBackground />
+
             {/* Sticky Navigation */}
             <header className="sticky top-0 z-50 w-full border-b border-white/5 bg-black/70 backdrop-blur-md">
                 <div className="mx-auto flex h-16 max-w-[1200px] items-center justify-between px-6">
@@ -41,8 +44,7 @@ export default function LandingPage() {
                         <span className="text-lg font-bold tracking-tight">SLR AI</span>
                     </div>
                     <nav className="hidden md:flex items-center gap-8">
-                        <a className="text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer">Features</a>
-                        <a className="text-sm font-medium text-slate-400 hover:text-white transition-colors cursor-pointer">Pricing</a>
+                        <Link href="/features" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Features</Link>
                         <a href="https://github.com/merttomekce/SLR.AI---Systematic-Literature-Review-Assistant" target="_blank" rel="noopener noreferrer" className="text-sm font-medium text-slate-400 hover:text-white transition-colors">Docs</a>
                     </nav>
                     <div className="flex items-center gap-4">
@@ -265,6 +267,7 @@ export default function LandingPage() {
                     <div className="grid grid-cols-2 gap-12 sm:grid-cols-3">
                         <div className="flex flex-col gap-4">
                             <h4 className="text-sm font-semibold text-white">Product</h4>
+                            <Link href="/features" className="text-sm text-slate-500 hover:text-white transition-colors">Features</Link>
                             <Link href="/review/setup" className="text-sm text-slate-500 hover:text-white transition-colors">Start Review</Link>
                             <Link href="/dashboard" className="text-sm text-slate-500 hover:text-white transition-colors">Dashboard</Link>
                         </div>

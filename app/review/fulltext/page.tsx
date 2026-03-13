@@ -206,7 +206,7 @@ export default function FullTextReviewPage() {
     }
     if (status === 'REVIEWING') return <span className="text-[9px] uppercase tracking-widest font-bold text-purple-400 bg-purple-400/10 px-2 py-0.5 rounded animate-pulse shadow-[0_0_10px_rgba(168,85,247,0.4)]">EXTRACTING...</span>;
     if (status === 'ERROR') return <span className="text-[9px] uppercase tracking-widest font-bold text-red-400 bg-red-400/10 px-2 py-0.5 rounded">ERROR</span>;
-    return <span className="text-[9px] uppercase tracking-widest font-bold text-white/30 bg-white/5 px-2 py-0.5 rounded">PENDING</span>;
+    return <span className="text-[9px] uppercase tracking-widest font-bold text-muted-foreground bg-secondary px-2 py-0.5 rounded">PENDING</span>;
   }
 
   return (
@@ -214,7 +214,7 @@ export default function FullTextReviewPage() {
       headerTitle="Full-Text Review"
       headerDescription="Deep extraction phase on included PDFs"
     >
-      <div className="p-6 h-[calc(100vh-80px)] flex flex-col overflow-hidden max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-[#000000] text-white">
+      <div className="p-6 h-[calc(100vh-80px)] flex flex-col overflow-hidden max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-background text-foreground">
 
         {!currentS2Run && (
           <div className="p-4 bg-yellow-500/10 border border-yellow-500/20 rounded-md text-yellow-500 mb-6 text-xs uppercase tracking-widest font-bold">
@@ -224,7 +224,7 @@ export default function FullTextReviewPage() {
 
         {/* TOP BAR */}
         <div className="flex items-center justify-between mb-6 flex-shrink-0">
-          <div className="flex items-center gap-6 border border-white/10 rounded-full p-1 pr-6 bg-white/[0.02]">
+          <div className="flex items-center gap-6 border border-border rounded-full p-1 pr-6 bg-secondary">
             <label className="cursor-pointer">
               <input
                 type="file"
@@ -234,14 +234,14 @@ export default function FullTextReviewPage() {
                 className="hidden"
                 disabled={isParsingFiles}
               />
-              <div className="h-10 px-6 rounded-full bg-white/10 hover:bg-white/20 text-white flex items-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-colors">
+              <div className="h-10 px-6 rounded-full bg-white/10 hover:bg-white/20 text-foreground flex items-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-colors">
                 <Upload className="w-3.5 h-3.5" />
                 {isParsingFiles ? "Parsing..." : "Upload PDFs"}
               </div>
             </label>
             <div className="flex items-center gap-2">
               <FileKey className="w-4 h-4 text-purple-400" />
-              <span className="text-[10px] uppercase tracking-widest font-bold text-white/50">{pdfsLoaded} PDFs loaded into memory</span>
+              <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">{pdfsLoaded} PDFs loaded into memory</span>
             </div>
           </div>
 
@@ -249,7 +249,7 @@ export default function FullTextReviewPage() {
             <Button
               onClick={handleExportFinal}
               disabled={!currentS2Run}
-              className="h-10 px-6 gap-2 bg-transparent text-white border border-white/20 hover:bg-white/10 font-bold uppercase tracking-widest text-[10px] rounded-full"
+              className="h-10 px-6 gap-2 bg-transparent text-foreground border border-white/20 hover:bg-white/10 font-bold uppercase tracking-widest text-[10px] rounded-full"
             >
               <Download className="w-4 h-4" />
               Export Matrix
@@ -270,13 +270,13 @@ export default function FullTextReviewPage() {
 
           {/* LEFT SIDEBAR: PROCESSING QUEUE */}
           <div className="w-[350px] flex-shrink-0 flex flex-col gap-4">
-            <Card className="flex-1 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl flex flex-col overflow-hidden">
-              <div className="p-4 border-b border-white/5 flex items-center justify-between">
+            <Card className="flex-1 bg-card/80 backdrop-blur-xl border border-border rounded-2xl flex flex-col overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Activity className="w-4 h-4 text-purple-500" />
-                  <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold">Processing Queue</h3>
+                  <h3 className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">Processing Queue</h3>
                 </div>
-                <span className="font-mono text-[10px] text-white/40">{doneCount} / {total}</span>
+                <span className="font-mono text-[10px] text-muted-foreground">{doneCount} / {total}</span>
               </div>
               <div className="flex-1 overflow-y-auto custom-scrollbar p-2">
                 <div className="grid gap-1">
@@ -286,18 +286,18 @@ export default function FullTextReviewPage() {
                       <div
                         key={paper.id}
                         onClick={() => setSelectedPaperId(paper.id)}
-                        className={`cursor-pointer group flex items-start justify-between p-3 rounded-xl transition-all border border-solid \${selectedPaperId === paper.id ? 'bg-white/10 border-white/20 shadow-inner' : 'bg-transparent border-transparent hover:bg-white/5'}`}
+                        className={`cursor-pointer group flex items-start justify-between p-3 rounded-xl transition-all border border-solid \${selectedPaperId === paper.id ? 'bg-white/10 border-white/20 shadow-inner' : 'bg-transparent border-transparent hover:bg-secondary'}`}
                       >
                         <div className="flex-1 min-w-0 pr-3">
                           <div className="flex items-center gap-2 mb-1">
-                            <span className="text-[8px] font-mono text-white/30">#{(idx + 1).toString().padStart(3, '0')}</span>
+                            <span className="text-[8px] font-mono text-muted-foreground">#{(idx + 1).toString().padStart(3, '0')}</span>
                             {!hasPdf ? (
                               <span className="text-[8px] font-bold uppercase tracking-widest text-red-500/70 border border-red-500/20 bg-red-500/10 px-1 rounded-sm">No PDF</span>
                             ) : (
                               <span className="text-[8px] font-bold uppercase tracking-widest text-green-500/70 border border-green-500/20 bg-green-500/10 px-1 rounded-sm">Ready</span>
                             )}
                           </div>
-                          <p className="text-xs font-medium text-white/90 line-clamp-2 leading-snug">{paper.title}</p>
+                          <p className="text-xs font-medium text-foreground line-clamp-2 leading-snug">{paper.title}</p>
                         </div>
                         <div className="flex-shrink-0 mt-1">
                           {renderStatus(paper.s2Status as 'DONE' | 'PENDING' | 'REVIEWING' | 'ERROR' | undefined, paper.s2Decision)}
@@ -313,18 +313,18 @@ export default function FullTextReviewPage() {
           {/* MAIN CENTER AREA: EXTRACTED DATA PAYLOAD */}
           <div className="flex-1 flex flex-col gap-6 min-w-0">
             {currentPaper ? (
-              <Card className="flex-1 bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-2xl p-8 relative overflow-hidden flex flex-col">
+              <Card className="flex-1 bg-card/80 backdrop-blur-xl border border-border rounded-2xl p-8 relative overflow-hidden flex flex-col">
                 <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-purple-500 via-pink-500 to-red-500 opacity-20" />
 
-                <div className="flex items-start justify-between mb-8 pb-6 border-b border-white/5">
+                <div className="flex items-start justify-between mb-8 pb-6 border-b border-border">
                   <div className="space-y-2 pr-8">
                     <h3 className="text-[10px] uppercase tracking-widest text-purple-400 font-bold flex items-center gap-2 mb-3">
                       <FileText className="w-3.5 h-3.5" /> Extracted Data Payload
                     </h3>
-                    <h2 className="text-2xl font-bold text-white leading-tight">
+                    <h2 className="text-2xl font-bold text-foreground leading-tight">
                       {currentPaper.title}
                     </h2>
-                    <p className="text-sm font-mono text-white/40">
+                    <p className="text-sm font-mono text-muted-foreground">
                       {currentPaper.author || 'Unknown Authors'} • {currentPaper.year || 'N/A'} • {currentPaper.doi || 'No DOI'}
                     </p>
                   </div>
@@ -338,7 +338,7 @@ export default function FullTextReviewPage() {
 
                 <div className="flex-1 overflow-y-auto custom-scrollbar pr-4">
                   {currentPaper.s2Status === 'REVIEWING' ? (
-                    <div className="h-full flex flex-col items-center justify-center text-white/20">
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50">
                       <div className="w-12 h-12 rounded-full border-t border-r border-purple-500 animate-spin mb-4" />
                       <p className="font-mono text-xs tracking-widest uppercase">Initializing LLM Decoder...</p>
                     </div>
@@ -348,30 +348,30 @@ export default function FullTextReviewPage() {
                         <div className="col-span-1 lg:col-span-2 space-y-2 p-5 rounded-xl bg-purple-500/5 border border-purple-500/10 relative overflow-hidden">
                           <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-purple-500/50" />
                           <p className="text-[10px] uppercase tracking-widest text-purple-400 font-bold">Reasoning Output</p>
-                          <p className="text-xs text-white/80 leading-relaxed font-mono">{currentPaper.s2Reason}</p>
+                          <p className="text-xs text-foreground leading-relaxed font-mono">{currentPaper.s2Reason}</p>
                         </div>
                       )}
 
                       {Object.entries(currentPaper.extractedData).map(([key, value]) => (
-                        <div key={key} className="space-y-3 p-5 rounded-xl bg-white/[0.02] border border-white/5 hover:bg-white/[0.04] transition-colors relative group">
+                        <div key={key} className="space-y-3 p-5 rounded-xl bg-secondary border border-border hover:bg-white/[0.04] transition-colors relative group">
                           <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-white/10 group-hover:bg-white/30 transition-colors" />
-                          <p className="text-[10px] uppercase tracking-widest text-white/50 font-bold">
+                          <p className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold">
                             {key.replace(/([A-Z])/g, ' $1').trim()}
                           </p>
-                          <div className="text-sm text-white/90 break-words font-mono tracking-tight leading-relaxed">
+                          <div className="text-sm text-foreground break-words font-mono tracking-tight leading-relaxed">
                             {Array.isArray(value) ? (
-                              <ul className="list-disc pl-4 space-y-1 marker:text-white/20">
+                              <ul className="list-disc pl-4 space-y-1 marker:text-muted-foreground/50">
                                 {value.map((v, i) => <li key={i}>{v}</li>)}
                               </ul>
                             ) : (
-                              <p>{String(value) || <span className="text-white/20 italic">null</span>}</p>
+                              <p>{String(value) || <span className="text-muted-foreground/50 italic">null</span>}</p>
                             )}
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="h-full flex flex-col items-center justify-center text-white/20">
+                    <div className="h-full flex flex-col items-center justify-center text-muted-foreground/50">
                       <FileText className="w-10 h-10 mb-3 opacity-20" />
                       <p className="text-sm">No structured data extracted.</p>
                       <p className="text-[10px] font-mono mt-1">Status: {currentPaper.s2Status || 'PENDING'}</p>
@@ -380,7 +380,7 @@ export default function FullTextReviewPage() {
                 </div>
               </Card>
             ) : (
-              <div className="flex-1 flex items-center justify-center text-white/20 font-mono text-sm border border-dashed border-white/10 rounded-2xl">
+              <div className="flex-1 flex items-center justify-center text-muted-foreground/50 font-mono text-sm border border-dashed border-border rounded-2xl">
                 Awaiting paper selection.
               </div>
             )}

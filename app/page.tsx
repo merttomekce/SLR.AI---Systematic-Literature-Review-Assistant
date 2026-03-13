@@ -100,7 +100,7 @@ export default function LandingPage() {
                                 </button>
                             </Link>
                         ) : (
-                            <Link href="/sign-up">
+                            <Link href="/dashboard">
                                 <button className="h-12 w-full sm:w-auto px-8 rounded bg-white text-black text-sm font-semibold hover:bg-slate-200 transition-colors flex items-center justify-center gap-2 shadow-[0_0_30px_-5px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 duration-200">
                                     Start New Review
                                     <ArrowRight className="w-5 h-5" />
@@ -219,7 +219,7 @@ export default function LandingPage() {
                                         </button>
                                     </Link>
                                 ) : (
-                                    <Link href="/review/setup">
+                                    <Link href="/dashboard">
                                         <button className="h-12 w-full sm:w-auto px-8 rounded bg-white text-black text-sm font-semibold hover:bg-slate-200 transition-colors shadow-[0_0_20px_-5px_rgba(255,255,255,0.3)] hover:scale-105 active:scale-95 duration-200">
                                             Get Started Free
                                         </button>
@@ -256,7 +256,7 @@ export default function LandingPage() {
                         <div className="flex flex-col gap-4">
                             <h4 className="text-sm font-semibold text-white">Product</h4>
                             <Link href="/features" className="text-sm text-slate-500 hover:text-white transition-colors">Features</Link>
-                            <Link href="/review/setup" className="text-sm text-slate-500 hover:text-white transition-colors">Start Review</Link>
+                            <Link href="/dashboard" className="text-sm text-slate-500 hover:text-white transition-colors">Start Review</Link>
                             <Link href="/dashboard" className="text-sm text-slate-500 hover:text-white transition-colors">Dashboard</Link>
                         </div>
                         <div className="flex flex-col gap-4">

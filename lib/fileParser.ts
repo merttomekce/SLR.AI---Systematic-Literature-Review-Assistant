@@ -102,12 +102,31 @@ export async function extractTextFromPDF(file: File): Promise<string> {
     let fullText = '';
     const numPages = pdfDoc.numPages;
 
-    // Extract text from up to first 50 pages to prevent huge payloads, though some SLRs might need all.
+    // Extract text from up to first 50 pages
     for (let i = 1; i <= Math.min(numPages, 50); i++) {
         const page = await pdfDoc.getPage(i);
         const textContent = await page.getTextContent();
-        const pageStrings = textContent.items.map((item: any) => item.str);
-        fullText += pageStrings.join(' ') + '\n';
+        
+        let lastY;
+        let pageText = '';
+        
+        for (const item of textContent.items) {
+            if (!('str' in item)) continue;
+            
+            // If the Y coordinate changes significantly, treat as a new line
+            if (lastY !== undefined && Math.abs(item.transform[5] - lastY) > 5) {
+                pageText += '\n';
+            }
+            // If it's on the same line, just add a space if the string doesn't end with one
+            else if (lastY !== undefined && !pageText.endsWith(' ') && !pageText.endsWith('\n')) {
+                pageText += ' ';
+            }
+            
+            pageText += item.str;
+            lastY = item.transform[5];
+        }
+        
+        fullText += pageText + '\n\n';
     }
 
     return fullText;

@@ -224,7 +224,7 @@ export default function FeaturesPage() {
                                     </button>
                                 </Link>
                             ) : (
-                                <Link href="/sign-up">
+                                <Link href="/dashboard">
                                     <button className="bg-white hover:bg-slate-200 transition-colors text-black font-semibold h-12 px-8 rounded flex items-center justify-center hover:scale-105 active:scale-95 duration-200">
                                         Start New Review
                                     </button>

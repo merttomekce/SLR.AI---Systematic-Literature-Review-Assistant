@@ -12,7 +12,7 @@ import {
   ChevronDown,
   Menu,
   X,
-  BookOpen, // Kept for navigation icons
+  BookOpen,
 } from 'lucide-react';
 import { Logo } from '@/components/logo';
 

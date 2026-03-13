@@ -86,14 +86,24 @@ async function callAnthropic(req: LLMRequest): Promise<string> {
     return data.content[0].text;
 }
 
-// Function to call OpenAI API
+// Function to call OpenAI API (or compatible local server)
 async function callOpenAI(req: LLMRequest): Promise<string> {
-    const url = 'https://api.openai.com/v1/chat/completions';
+    const isLocal = req.provider === 'local' || req.provider === 'lmstudio';
+    let url = 'https://api.openai.com/v1/chat/completions';
+    
+    // In local mode, we pass the endpoint URL inside the apiKey field from the store
+    if (isLocal) {
+        const endpoint = req.apiKey && req.apiKey.startsWith('http') ? req.apiKey : 'http://127.0.0.1:11434/v1';
+        url = endpoint.endsWith('/') ? `${endpoint}chat/completions` : `${endpoint}/chat/completions`;
+    }
+
+    const authHeader = isLocal ? 'Bearer local' : `Bearer ${req.apiKey}`;
+
     const response = await fetch(url, {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
-            'Authorization': `Bearer ${req.apiKey}`,
+            'Authorization': authHeader,
         },
         body: JSON.stringify({
             model: req.model,
@@ -183,7 +193,7 @@ async function callGoogle(req: LLMRequest): Promise<string> {
 async function executeLLM(req: LLMRequest): Promise<string> {
     if (req.provider === 'anthropic') {
         return await callAnthropic(req);
-    } else if (req.provider === 'openai') {
+    } else if (req.provider === 'openai' || req.provider === 'local' || req.provider === 'lmstudio') {
         return await callOpenAI(req);
     } else if (req.provider === 'google') {
         return await callGoogle(req);
@@ -319,10 +329,13 @@ export async function extractResearchParameters(
     text: string,
     config: { provider: string; model: string; apiKey: string }
 ): Promise<ExtractedParameters> {
-    const systemPrompt = `You are an expert academic researcher who is setting up a Systematic Literature Review (SLR). 
+    const systemPrompt = `You are an expert academic researcher setting up a Systematic Literature Review (SLR). 
 Your task is to analyze the provided Requirements Document text and extract the key research parameters needed to configure an AI screening tool.
 
-You must return strictly a single valid JSON object with the following structure and no additional text or markdown backticks:
+CRITICAL INSTRUCTION: You must return STRICTLY a valid JSON object. Do not include markdown \`\`\`json backticks. Do not include any text before or after the JSON.
+CRITICAL INSTRUCTION: All newlines inside string values MUST be escaped as \\n. Raw unescaped newlines will break the parser.
+
+You must return strictly a single valid JSON object with the following structure:
 {
   "topic": "A clear, concise 1-2 sentence description of the research topic or research question.",
   "inclusionCriteria": "A bulleted or numbered list of criteria a paper MUST meet to be included.",
@@ -344,9 +357,45 @@ If any field is completely missing from the document, provide an empty string fo
             userPrompt: config.provider === 'anthropic' ? userPrompt + "\n\nProvide JUST the raw JSON object, starting with { and ending with }." : userPrompt
         });
 
-        const match = textResp.match(/\{[\s\S]*\}/);
-        const jsonStr = match ? match[0] : textResp;
-        const result = JSON.parse(jsonStr);
+        // Robustly parse JSON even if wrapped in markdown blocks
+        let jsonStr = textResp.trim();
+        if (jsonStr.startsWith('```json')) jsonStr = jsonStr.replace(/^```json/, '');
+        if (jsonStr.startsWith('```')) jsonStr = jsonStr.replace(/^```/, '');
+        if (jsonStr.endsWith('```')) jsonStr = jsonStr.replace(/```$/, '');
+        jsonStr = jsonStr.trim();
+
+        // Fallback to strict regex if the above didn't result in a valid leading {
+        if (!jsonStr.startsWith('{')) {
+            const match = jsonStr.match(/\{[\s\S]*\}/);
+            jsonStr = match ? match[0] : jsonStr;
+        }
+
+        let result;
+        try {
+           // Attempt to sanitize unescaped newlines within string values before parsing
+           // This is a common issue with local models returning JSON-like strings
+           const sanitizedStr = jsonStr.replace(/"([^"]*)"/g, (match, p1) => {
+               return `"${p1.replace(/\n/g, '\\n').replace(/\r/g, '\\r')}"`;
+           });
+           result = JSON.parse(sanitizedStr);
+        } catch (parseError) {
+           console.error("Failed to parse JSON strictly. Raw LLM Output:", textResp);
+           
+           // Use highly resilient regex that spans multiple lines to find key-value blocks
+           const topicMatch = textResp.match(/"topic"\s*:\s*"([\s\S]*?)"(?=\s*(?:,|"inclusionCriteria"|}))/);
+           const inclusionMatch = textResp.match(/"inclusionCriteria"\s*:\s*"([\s\S]*?)"(?=\s*(?:,|"exclusionCriteria"|}))/);
+           const exclusionMatch = textResp.match(/"exclusionCriteria"\s*:\s*"([\s\S]*?)"(?=\s*(?:,|"extractionFields"|}))/);
+           const extractionMatch = textResp.match(/"extractionFields"\s*:\s*"([\s\S]*?)"(?=\s*(?:,|"extraContext"|}))/);
+           const contextMatch = textResp.match(/"extraContext"\s*:\s*"([\s\S]*?)"(?=\s*(?:,|}))/);
+           
+           result = {
+              topic: topicMatch ? topicMatch[1] : '',
+              inclusionCriteria: inclusionMatch ? inclusionMatch[1] : '',
+              exclusionCriteria: exclusionMatch ? exclusionMatch[1] : '',
+              extractionFields: extractionMatch ? extractionMatch[1] : '',
+              extraContext: contextMatch ? contextMatch[1] : ''
+           };
+        }
 
         return {
             topic: result.topic || '',
@@ -359,4 +408,47 @@ If any field is completely missing from the document, provide an empty string fo
         console.error("Parameter Extraction LLM Error:", error);
         throw error;
     }
+}
+
+export function extractResearchParametersRegex(text: string): ExtractedParameters {
+    // A fast, offline regex-based fallback to extract parameters when no LLM is available.
+    
+    // Topic: Look for early instances of "Title", "Topic", "Objective", or take the first few lines.
+    let topic = "";
+    const topicMatch = text.match(/(?:Title|Project Title|Topic|Objective)[\s\S]*?(?=\n\n|\r\n\r\n|Inclusion|Background|Introduction)/i);
+    if (topicMatch) {
+       topic = topicMatch[0].replace(/(Title|Project Title|Topic|Objective)[\s]*:?/i, '').trim().substring(0, 300);
+    } else {
+       // Just grab the first 200 characters of the document as a fallback topic
+       topic = text.substring(0, 200).trim().replace(/\n/g, ' ');
+    }
+
+    // Inclusion Criteria
+    let inclusionCriteria = "";
+    const incMatch = text.match(/(?:Inclusion Criteria|Eligibility Criteria|Participants)[\s\S]*?(?=\n.*Exclusion|\n.*Data Extraction|\n.*Search Strategy|\n.*Methods)/i);
+    if (incMatch) {
+        inclusionCriteria = incMatch[0].replace(/(Inclusion Criteria|Eligibility Criteria|Participants)[\s]*:?/i, '').trim().substring(0, 1000);
+    }
+
+    // Exclusion Criteria
+    let exclusionCriteria = "";
+    const excMatch = text.match(/(?:Exclusion Criteria|Exclusion Rules)[\s\S]*?(?=\n.*Data Extraction|\n.*Search Strategy|\n.*Methods|\n.*Risk of Bias)/i);
+    if (excMatch) {
+        exclusionCriteria = excMatch[0].replace(/(Exclusion Criteria|Exclusion Rules)[\s]*:?/i, '').trim().substring(0, 1000);
+    }
+
+    // Extraction Fields
+    let extractionFields = "";
+    const extMatch = text.match(/(?:Data Extraction|Data points|Data to extract)[\s\S]*?(?=\n.*Risk of Bias|\n.*Quality Assessment|\n.*Data Synthesis|References)/i);
+    if (extMatch) {
+        extractionFields = extMatch[0].replace(/(Data Extraction|Data points|Data to extract)[\s]*:?/i, '').trim().substring(0, 1000);
+    }
+
+    return {
+        topic,
+        inclusionCriteria,
+        exclusionCriteria,
+        extractionFields,
+        extraContext: "Extracted via Offline Regex Fallback Mode. Please review and refine."
+    };
 }

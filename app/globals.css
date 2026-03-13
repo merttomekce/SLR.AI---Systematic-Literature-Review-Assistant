@@ -4,74 +4,76 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.98 0 0); /* Off-white */
-  --foreground: oklch(0.12 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.12 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.12 0 0);
-  --primary: oklch(0.12 0 0);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.20 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.12 0 0);
-  --destructive: oklch(0.58 0.18 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.92 0 0);
-  --input: oklch(0.92 0 0);
-  --ring: oklch(0.12 0 0);
+  /* Soft Light Mode (Warm/Pastel White + Charcoal) */
+  --background: oklch(0.98 0.01 80); /* Soft warm off-white/cream */
+  --foreground: oklch(0.25 0.02 260); /* Soft charcoal, not pure black */
+  --card: oklch(0.99 0.005 80);
+  --card-foreground: oklch(0.25 0.02 260);
+  --popover: oklch(0.99 0.005 80);
+  --popover-foreground: oklch(0.25 0.02 260);
+  --primary: oklch(0.25 0.02 260);
+  --primary-foreground: oklch(0.98 0.01 80);
+  --secondary: oklch(0.95 0.01 80); /* Slightly darker soft cream */
+  --secondary-foreground: oklch(0.35 0.02 260);
+  --muted: oklch(0.95 0.01 80);
+  --muted-foreground: oklch(0.50 0.02 260);
+  --accent: oklch(0.95 0.01 80);
+  --accent-foreground: oklch(0.25 0.02 260);
+  --destructive: oklch(0.60 0.15 20); /* Softer red */
+  --destructive-foreground: oklch(0.98 0.01 80);
+  --border: oklch(0.90 0.01 80); /* Soft border */
+  --input: oklch(0.90 0.01 80);
+  --ring: oklch(0.25 0.02 260);
   --chart-1: oklch(0.5 0.15 280);
   --chart-2: oklch(0.6 0.12 60);
   --chart-3: oklch(0.45 0.15 40);
   --chart-4: oklch(0.55 0.12 200);
   --chart-5: oklch(0.65 0.1 120);
   --radius: 0.5rem;
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.12 0 0);
-  --sidebar-primary: oklch(0.12 0 0);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.12 0 0);
-  --sidebar-border: oklch(0.92 0 0);
-  --sidebar-ring: oklch(0.12 0 0);
+  --sidebar: oklch(0.99 0.005 80);
+  --sidebar-foreground: oklch(0.25 0.02 260);
+  --sidebar-primary: oklch(0.25 0.02 260);
+  --sidebar-primary-foreground: oklch(0.98 0.01 80);
+  --sidebar-accent: oklch(0.95 0.01 80);
+  --sidebar-accent-foreground: oklch(0.25 0.02 260);
+  --sidebar-border: oklch(0.90 0.01 80);
+  --sidebar-ring: oklch(0.25 0.02 260);
 }
 
 .dark {
-  --background: oklch(0.11 0.01 280); /* Linear-style deep dark base */
-  --foreground: oklch(0.98 0 0); /* Crisp stark white */
-  --card: oklch(0.15 0.01 280); /* Slightly elevated surface */
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.15 0.01 280);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.98 0 0); /* Inverse for high contrast buttons */
-  --primary-foreground: oklch(0.11 0.01 280);
-  --secondary: oklch(0.20 0.01 280); /* Interactive surface */
-  --secondary-foreground: oklch(0.92 0 0);
-  --muted: oklch(0.20 0.01 280);
-  --muted-foreground: oklch(0.65 0 0); /* Readable grey */
-  --accent: oklch(0.25 0.02 280); /* Hover states */
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.58 0.18 25);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.25 0.01 280); /* Almost invisible subtle borders */
-  --input: oklch(0.20 0.01 280);
-  --ring: oklch(0.98 0 0);
+  /* Soft Dark Mode (Slate Grey + Bone White) */
+  --background: oklch(0.18 0.01 260); /* Soft, lighter slate/charcoal instead of deep black */
+  --foreground: oklch(0.90 0.01 260); /* Soft bone white, not stark white */
+  --card: oklch(0.22 0.01 260); /* Elevated slate surface */
+  --card-foreground: oklch(0.90 0.01 260);
+  --popover: oklch(0.22 0.01 260);
+  --popover-foreground: oklch(0.90 0.01 260);
+  --primary: oklch(0.90 0.01 260); /* Soft white button */
+  --primary-foreground: oklch(0.18 0.01 260);
+  --secondary: oklch(0.26 0.01 260); /* Interactive surface */
+  --secondary-foreground: oklch(0.85 0.01 260);
+  --muted: oklch(0.26 0.01 260);
+  --muted-foreground: oklch(0.65 0.01 260); /* Readable grey */
+  --accent: oklch(0.30 0.01 260); /* Hover states */
+  --accent-foreground: oklch(0.90 0.01 260);
+  --destructive: oklch(0.60 0.15 20);
+  --destructive-foreground: oklch(0.90 0.01 260);
+  --border: oklch(0.28 0.01 260); /* Soft visible border */
+  --input: oklch(0.26 0.01 260);
+  --ring: oklch(0.90 0.01 260);
   --chart-1: oklch(0.7 0.12 280);
   --chart-2: oklch(0.65 0.1 60);
   --chart-3: oklch(0.68 0.12 40);
   --chart-4: oklch(0.72 0.1 200);
   --chart-5: oklch(0.62 0.12 120);
-  --sidebar: oklch(0.12 0.01 280);
-  --sidebar-foreground: oklch(0.95 0 0);
-  --sidebar-primary: oklch(0.98 0 0);
-  --sidebar-primary-foreground: oklch(0.11 0.01 280);
-  --sidebar-accent: oklch(0.20 0.01 280);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.20 0.01 280);
-  --sidebar-ring: oklch(0.98 0 0);
+  --sidebar: oklch(0.19 0.01 260);
+  --sidebar-foreground: oklch(0.88 0.01 260);
+  --sidebar-primary: oklch(0.90 0.01 260);
+  --sidebar-primary-foreground: oklch(0.18 0.01 260);
+  --sidebar-accent: oklch(0.26 0.01 260);
+  --sidebar-accent-foreground: oklch(0.90 0.01 260);
+  --sidebar-border: oklch(0.28 0.01 260);
+  --sidebar-ring: oklch(0.90 0.01 260);
 }
 
 @theme inline {
@@ -245,6 +247,30 @@
   /* Link Underline Animation */
   .link-underline {
     position: relative;
+  }
+
+  @keyframes progress-shimmer {
+    0% {
+      background-position: 200% 0;
+    }
+    100% {
+      background-position: -200% 0;
+    }
+  }
+
+  .animate-progress-shimmer {
+    background-image: linear-gradient(
+      -45deg,
+      rgba(255, 255, 255, 0.15) 25%,
+      transparent 25%,
+      transparent 50%,
+      rgba(255, 255, 255, 0.15) 50%,
+      rgba(255, 255, 255, 0.15) 75%,
+      transparent 75%,
+      transparent
+    );
+    background-size: 1rem 1rem;
+    animation: progress-shimmer 2s linear infinite;
   }
 
   .link-underline::after {

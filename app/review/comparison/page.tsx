@@ -94,20 +94,20 @@ export default function ComparisonPage() {
       headerTitle="Model Comparison"
       headerDescription="Compare AI inclusion/exclusion decisions across independent runs"
     >
-      <div className="p-6 h-[calc(100vh-80px)] flex flex-col max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-[#000000] text-white overflow-hidden">
+      <div className="p-6 h-[calc(100vh-80px)] flex flex-col max-w-[1800px] mx-auto animate-in fade-in duration-500 bg-background text-foreground overflow-hidden">
 
         {!hasEnoughRuns ? (
           <div className="flex-1 flex items-center justify-center">
-            <Card className="p-12 text-center bg-white/[0.02] border border-white/5 backdrop-blur-sm max-w-md w-full">
-              <AlertCircle className="w-12 h-12 text-white/20 mx-auto mb-4" />
-              <h3 className="text-lg font-bold text-white mb-2 uppercase tracking-widest text-xs">
+            <Card className="p-12 text-center bg-secondary border border-border backdrop-blur-sm max-w-md w-full">
+              <AlertCircle className="w-12 h-12 text-muted-foreground/50 mx-auto mb-4" />
+              <h3 className="text-lg font-bold text-foreground mb-2 uppercase tracking-widest text-xs">
                 Multiple Runs Required
               </h3>
-              <p className="text-sm text-white/50 mb-8 leading-relaxed">
+              <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
                 To compare AI decisions, you need to save at least two runs in Step 1 using different models or prompts.
               </p>
               <Link href="/review/setup">
-                <Button className="w-full gap-2 bg-white text-black hover:bg-white/90 font-bold uppercase tracking-widest text-[10px] rounded-full h-12 transition-transform hover:scale-105 active:scale-95">
+                <Button className="w-full gap-2 bg-foreground text-background hover:bg-white/90 font-bold uppercase tracking-widest text-[10px] rounded-full h-12 transition-transform hover:scale-105 active:scale-95">
                   Initiate New Run
                 </Button>
               </Link>
@@ -119,29 +119,29 @@ export default function ComparisonPage() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6 flex-shrink-0">
               <div className="flex items-center gap-4">
                 {/* Pseudo dropdowns for models */}
-                <div className="flex gap-2 p-1.5 rounded-full bg-white/[0.02] border border-white/5">
+                <div className="flex gap-2 p-1.5 rounded-full bg-secondary border border-border">
                   {savedS1Runs.slice(0, 3).map((run, i) => (
-                    <div key={run.id} className="flex items-center gap-2 px-4 py-2 bg-white/5 rounded-full">
+                    <div key={run.id} className="flex items-center gap-2 px-4 py-2 bg-secondary rounded-full">
                       <span className="w-2 h-2 rounded-full bg-purple-500" />
-                      <span className="text-[10px] uppercase tracking-widest font-bold text-white/80">{run.name}</span>
+                      <span className="text-[10px] uppercase tracking-widest font-bold text-foreground">{run.name}</span>
                     </div>
                   ))}
                   {savedS1Runs.length > 3 && (
-                    <div className="flex items-center px-4 py-2 bg-white/5 rounded-full text-[10px] text-white/50">{`+\${savedS1Runs.length - 3} MORE`}</div>
+                    <div className="flex items-center px-4 py-2 bg-secondary rounded-full text-[10px] text-muted-foreground">{`+\${savedS1Runs.length - 3} MORE`}</div>
                   )}
                 </div>
               </div>
 
               <div className="flex items-center gap-6">
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Conflicts</p>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">Conflicts</p>
                   <p className="text-xl font-mono text-red-500">{agreementStats['CONFLICT'] || 0}</p>
                 </div>
                 <div className="h-12 w-px bg-white/10" />
                 <div className="text-right">
-                  <p className="text-[10px] uppercase tracking-widest font-bold text-white/40 mb-1">Agreement Rate</p>
+                  <p className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground mb-1">Agreement Rate</p>
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl font-mono tracking-tight text-white">{agreementPercentage}%</span>
+                    <span className="text-3xl font-mono tracking-tight text-foreground">{agreementPercentage}%</span>
                     <div className={`h-2 w-2 rounded-full animate-pulse \${agreementPercentage > 85 ? 'bg-green-500 shadow-[0_0_15px_rgba(34,197,94,0.6)]' : 'bg-yellow-500 shadow-[0_0_15px_rgba(234,179,8,0.6)]'}`} />
                   </div>
                 </div>
@@ -149,30 +149,30 @@ export default function ComparisonPage() {
             </div>
 
             {/* DATA MATRIX TABLE */}
-            <div className="flex-1 flex flex-col bg-[#0a0a0a]/80 backdrop-blur-xl border border-white/5 rounded-3xl overflow-hidden min-h-0 relative">
+            <div className="flex-1 flex flex-col bg-card/80 backdrop-blur-xl border border-border rounded-3xl overflow-hidden min-h-0 relative">
               <div className="absolute top-0 left-0 right-0 h-10 bg-gradient-to-b from-white/[0.05] to-transparent pointer-events-none z-20" />
 
-              <div className="flex items-center justify-between p-6 border-b border-white/5 flex-shrink-0 relative z-10">
-                <h3 className="text-[10px] uppercase tracking-widest text-white/50 font-bold flex items-center gap-2">
+              <div className="flex items-center justify-between p-6 border-b border-border flex-shrink-0 relative z-10">
+                <h3 className="text-[10px] uppercase tracking-widest text-muted-foreground font-bold flex items-center gap-2">
                   <Copy className="w-4 h-4 text-purple-400" /> Matrix Comparison
                 </h3>
-                <Button onClick={handleExportComparison} className="h-9 px-5 gap-2 bg-white/10 hover:bg-white/20 text-white font-bold uppercase tracking-widest text-[9px] rounded-full border border-white/5 transition-all">
+                <Button onClick={handleExportComparison} className="h-9 px-5 gap-2 bg-white/10 hover:bg-white/20 text-foreground font-bold uppercase tracking-widest text-[9px] rounded-full border border-border transition-all">
                   <Download className="w-3.5 h-3.5" /> Export Selection
                 </Button>
               </div>
 
               <div className="flex-1 overflow-auto custom-scrollbar relative z-10">
                 <table className="w-full text-left text-sm border-collapse">
-                  <thead className="sticky top-0 bg-[#0a0a0a]/90 backdrop-blur-xl z-10 border-b border-white/10">
+                  <thead className="sticky top-0 bg-card/90 backdrop-blur-xl z-10 border-b border-border">
                     <tr>
-                      <th className="py-4 px-6 w-[400px] text-[10px] uppercase tracking-widest font-bold text-white/40 whitespace-nowrap">Paper Context</th>
+                      <th className="py-4 px-6 w-[400px] text-[10px] uppercase tracking-widest font-bold text-muted-foreground whitespace-nowrap">Paper Context</th>
                       {savedS1Runs.map(run => (
-                        <th key={run.id} className="py-4 px-6 text-center text-[10px] uppercase tracking-widest font-bold text-white/40 min-w-[150px]">
+                        <th key={run.id} className="py-4 px-6 text-center text-[10px] uppercase tracking-widest font-bold text-muted-foreground min-w-[150px]">
                           {run.name}
                           <div className="text-[8px] font-mono text-blue-400/80 mt-1 opacity-70 tracking-normal normal-case">{run.model}</div>
                         </th>
                       ))}
-                      <th className="py-4 px-6 text-[10px] uppercase tracking-widest font-bold text-white/40 text-center w-32">Status</th>
+                      <th className="py-4 px-6 text-[10px] uppercase tracking-widest font-bold text-muted-foreground text-center w-32">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-white/5">
@@ -180,7 +180,7 @@ export default function ComparisonPage() {
                       const agreement = getAgreement(row.decisions);
                       return (
                         <tr key={idx} className={`\${agreement.bgClass} transition-colors group`}>
-                          <td className="py-5 px-6 font-medium text-white/90">
+                          <td className="py-5 px-6 font-medium text-foreground">
                             <span className="line-clamp-2 leading-relaxed" title={row.title}>{row.title}</span>
                           </td>
                           {savedS1Runs.map(run => {
@@ -191,12 +191,12 @@ export default function ComparisonPage() {
                                   <span className={`text-[9px] uppercase font-bold tracking-widest border px-2.5 py-1 rounded \${
                                        dec === 'INCLUDED' ? 'bg-green-500/10 text-green-400 border-green-500/20 shadow-[0_0_10px_rgba(74,222,128,0.1)]' :
                                        dec === 'EXCLUDED' ? 'bg-red-500/10 text-red-400 border-red-500/20 shadow-[0_0_10px_rgba(248,113,113,0.1)]' :
-                                       'bg-white/5 text-white/40 border-white/10'
+                                       'bg-secondary text-muted-foreground border-border'
                                      }`}>
                                     {dec}
                                   </span>
                                 ) : (
-                                  <span className="text-[10px] text-white/20 font-mono">-</span>
+                                  <span className="text-[10px] text-muted-foreground/50 font-mono">-</span>
                                 )}
                               </td>
                             )
@@ -205,14 +205,14 @@ export default function ComparisonPage() {
                             {agreement.status === 'agree' && <CheckCircle2 className="w-5 h-5 text-green-500/50 mx-auto" />}
                             {agreement.status === 'conflict' && <AlertCircle className="w-5 h-5 text-red-500/80 mx-auto" />}
                             {agreement.status === 'partial' && <AlertTriangle className="w-5 h-5 text-yellow-500/50 mx-auto" />}
-                            {agreement.status === 'pending' && <span className="text-white/20">-</span>}
+                            {agreement.status === 'pending' && <span className="text-muted-foreground/50">-</span>}
                           </td>
                         </tr>
                       )
                     })}
                     {paperRows.length === 0 && (
                       <tr>
-                        <td colSpan={savedS1Runs.length + 2} className="py-12 text-center text-white/30 text-xs tracking-widest uppercase">
+                        <td colSpan={savedS1Runs.length + 2} className="py-12 text-center text-muted-foreground text-xs tracking-widest uppercase">
                           No shared papers found.
                         </td>
                       </tr>

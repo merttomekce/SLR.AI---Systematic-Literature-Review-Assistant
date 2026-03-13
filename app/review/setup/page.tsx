@@ -13,6 +13,7 @@ import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/h
 import { useRouter } from 'next/navigation';
 import { useReviewStore } from '@/store/useReviewStore';
 import { cn } from '@/lib/utils';
+import { FileDropZone } from '@/components/file-drop-zone';
 import { parseExcelFile, parseTextReferences, extractTextFromPDF } from '@/lib/fileParser';
 import { extractResearchParameters, extractResearchParametersRegex } from '@/lib/llmClient';
 import { Switch } from '@/components/ui/switch';
@@ -70,35 +71,17 @@ export default function SetupPage() {
     return () => clearTimeout(timer);
   }, [apiKey, fetchAvailableModels, isLocalMode]);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.currentTarget.files;
-    if (files) {
-      setIsParsing(true);
-      try {
-        for (let i = 0; i < files.length; i++) {
-          const f = files[i];
-          if (f.name.endsWith('.xlsx') || f.name.endsWith('.csv')) {
-            const parsedPapers = await parseExcelFile(f);
-            loadPapers(parsedPapers, false);
-            setUploadedFiles((prev) => [...prev, f.name]);
-          } else {
-            alert(`Only .xlsx and .csv files are supported for references right now.`);
-          }
-        }
-      } catch (err) {
-        console.error("Error parsing file:", err);
-        alert("Failed to parse file. Ensure it's a valid Excel/CSV.");
-      } finally {
-        setIsParsing(false);
-      }
+  const handleRequirementsUpload = async (e?: React.ChangeEvent<HTMLInputElement> | FileList) => {
+    let file: File | undefined;
+    if (e instanceof FileList) {
+      file = e[0];
+    } else if (e) {
+      file = e.currentTarget.files?.[0];
     }
-  };
-
-  const handleRequirementsUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.currentTarget.files?.[0];
+    
     if (!file) return;
 
-    if (useAiExtraction && !apiKey) {
+    if (useAiExtraction && !apiKey && provider !== 'local') {
       toast.error('API Key Missing', { description: 'Please provide an API key or connect a local model first for AI extraction.' });
       return;
     }
@@ -137,6 +120,36 @@ export default function SetupPage() {
     }
   };
 
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | FileList) => {
+    let files: FileList | null = null;
+    if (e instanceof FileList) {
+      files = e;
+    } else {
+      files = e.currentTarget.files;
+    }
+
+    if (files) {
+      setIsParsing(true);
+      try {
+        for (let i = 0; i < files.length; i++) {
+          const f = files[i];
+          if (f.name.endsWith('.xlsx') || f.name.endsWith('.csv')) {
+            const parsedPapers = await parseExcelFile(f);
+            loadPapers(parsedPapers, false);
+            setUploadedFiles((prev) => [...prev, f.name]);
+          } else {
+            alert(`Only .xlsx and .csv files are supported for references right now.`);
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing file:", err);
+        alert("Failed to parse file. Ensure it's a valid Excel/CSV.");
+      } finally {
+        setIsParsing(false);
+      }
+    }
+  };
+
   const handlePasteRefs = () => {
     if (!apaText.trim()) return;
     const parsedPapers = parseTextReferences(apaText);
@@ -157,7 +170,7 @@ export default function SetupPage() {
     router.push('/review/screening');
   };
 
-  const isFormValid = topic && apiKey && papers.length > 0 && model;
+  const isFormValid = topic && (provider === 'local' || apiKey) && papers.length > 0 && model;
 
   return (
     <LayoutWrapper
@@ -330,23 +343,30 @@ export default function SetupPage() {
                     />
                   </div>
                 </div>
-                <div className="relative group rounded-2xl p-[2px] overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
-                  <div className="relative h-full bg-card rounded-[14px] border border-dashed border-border group-hover:border-white/20 transition-colors p-6 text-center">
-                    <label className="cursor-pointer block relative z-10 w-full h-full">
-                      <input type="file" accept=".pdf" onChange={handleRequirementsUpload} className="hidden" disabled={isExtractingParams} />
-                      <div className="flex flex-col items-center justify-center gap-3">
-                        {isExtractingParams ? <Loader2 className="w-8 h-8 animate-spin text-purple-400" /> : <Upload className="w-8 h-8 text-muted-foreground group-hover:text-purple-400 transition-colors" />}
-                        <div>
-                          <p className="text-sm font-semibold text-foreground">{isExtractingParams ? 'Extracting protocol...' : 'Upload PDF Protocol Document'}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
-                            Using {useAiExtraction ? "AI Synthesis" : "Fast Regex Mode"}
-                          </p>
+                <FileDropZone 
+                  onFilesDrop={handleRequirementsUpload} 
+                  accept=".pdf" 
+                  disabled={isExtractingParams}
+                  className="rounded-2xl w-full h-full"
+                >
+                  <div className="relative group rounded-2xl p-[2px] overflow-hidden h-full">
+                    <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+                    <div className="relative h-full bg-card rounded-[14px] border border-dashed border-border group-hover:border-white/20 transition-colors p-6 text-center">
+                      <label className="cursor-pointer block relative z-10 w-full h-full">
+                        <input type="file" accept=".pdf" onChange={handleRequirementsUpload} className="hidden" disabled={isExtractingParams} />
+                        <div className="flex flex-col items-center justify-center gap-3">
+                          {isExtractingParams ? <Loader2 className="w-8 h-8 animate-spin text-purple-400" /> : <Upload className="w-8 h-8 text-muted-foreground group-hover:text-purple-400 transition-colors" />}
+                          <div>
+                            <p className="text-sm font-semibold text-foreground">{isExtractingParams ? 'Extracting protocol...' : 'Upload PDF Protocol Document'}</p>
+                            <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                              Using {useAiExtraction ? "AI Synthesis" : "Fast Regex Mode"}
+                            </p>
+                          </div>
                         </div>
-                      </div>
-                    </label>
+                      </label>
+                    </div>
                   </div>
-                </div>
+                </FileDropZone>
               </div>
 
               {/* References Import */}
@@ -355,13 +375,20 @@ export default function SetupPage() {
                   <span>Import References</span>
                   <span className="text-blue-400 font-bold">{papers.length} LOCATED</span>
                 </Label>
-                <div className="flex gap-4">
-                  <div className="flex-1 bg-secondary rounded-2xl border border-border p-4 relative overflow-hidden">
-                    <label className="cursor-pointer flex flex-col items-center justify-center h-full text-center group">
-                      <input type="file" multiple accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileUpload} className="hidden" disabled={isParsing} />
-                      <Upload className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors mb-2" />
-                      <span className="text-xs font-medium text-muted-foreground">CSV / Excel Upload</span>
-                    </label>
+                <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex-1 bg-secondary rounded-2xl border border-border relative overflow-hidden">
+                    <FileDropZone 
+                      onFilesDrop={handleFileUpload} 
+                      accept=".csv,.xlsx,.xls" 
+                      disabled={isParsing}
+                      className="h-full w-full rounded-2xl"
+                    >
+                      <label className="cursor-pointer flex flex-col items-center justify-center h-full text-center group p-4">
+                        <input type="file" multiple accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel" onChange={handleFileUpload} className="hidden" disabled={isParsing} />
+                        <Upload className="w-6 h-6 text-muted-foreground group-hover:text-foreground transition-colors mb-2" />
+                        <span className="text-xs font-medium text-muted-foreground">CSV / Excel Upload</span>
+                      </label>
+                    </FileDropZone>
                   </div>
 
                   <div className="flex-1 flex flex-col gap-2 relative">

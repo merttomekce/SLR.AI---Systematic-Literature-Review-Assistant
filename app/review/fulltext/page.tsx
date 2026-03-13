@@ -16,6 +16,7 @@ import { toast } from 'sonner';
 import { useReviewStore, Paper, Decision } from '@/store/useReviewStore';
 import { extractTextFromPDF, matchFileToPaper, exportToExcel } from '@/lib/fileParser';
 import { processStep2 } from '@/lib/llmClient';
+import { FileDropZone } from '@/components/file-drop-zone';
 
 export default function FullTextReviewPage() {
   const { currentS2Run, updatePaperInS2Run, apiKey, provider, model, topic, inclusionCriteria, exclusionCriteria, extraContext, extractionFields } = useReviewStore();
@@ -47,8 +48,14 @@ export default function FullTextReviewPage() {
 
   const currentPaper = papers.find(p => p.id === selectedPaperId) || papers[0];
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.currentTarget.files;
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement> | FileList) => {
+    let files: FileList | null = null;
+    if (e instanceof FileList) {
+      files = e;
+    } else {
+      files = e.currentTarget.files;
+    }
+    
     if (!files || files.length === 0) return;
 
     setIsParsingFiles(true);
@@ -60,11 +67,11 @@ export default function FullTextReviewPage() {
         if (file.name.endsWith('.pdf')) {
           const matchedPaper = matchFileToPaper(file.name, papers);
           if (matchedPaper) {
-            toast.info(`Parsing \${file.name}...`);
+            toast.info(`Parsing ${file.name}...`);
             const text = await extractTextFromPDF(file);
             newTexts[matchedPaper.id] = text;
           } else {
-            toast.warning(`No matching paper for \${file.name}`);
+            toast.warning(`No matching paper for ${file.name}`);
           }
         }
       }
@@ -223,27 +230,34 @@ export default function FullTextReviewPage() {
         )}
 
         {/* TOP BAR */}
-        <div className="flex items-center justify-between mb-6 flex-shrink-0">
-          <div className="flex items-center gap-6 border border-border rounded-full p-1 pr-6 bg-secondary">
-            <label className="cursor-pointer">
-              <input
-                type="file"
-                multiple
-                accept=".pdf"
-                onChange={handleFileUpload}
-                className="hidden"
-                disabled={isParsingFiles}
-              />
-              <div className="h-10 px-6 rounded-full bg-white/10 hover:bg-white/20 text-foreground flex items-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-colors">
-                <Upload className="w-3.5 h-3.5" />
-                {isParsingFiles ? "Parsing..." : "Upload PDFs"}
+        <div className="flex flex-wrap items-center justify-between gap-4 mb-6 flex-shrink-0">
+          <FileDropZone 
+            onFilesDrop={handleFileUpload} 
+            accept=".pdf" 
+            disabled={isParsingFiles}
+            className="w-auto h-auto rounded-full"
+          >
+            <div className="flex items-center gap-6 border border-border rounded-full p-1 pr-6 bg-secondary">
+              <label className="cursor-pointer">
+                <input
+                  type="file"
+                  multiple
+                  accept=".pdf"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  disabled={isParsingFiles}
+                />
+                <div className="h-10 px-6 rounded-full bg-white/10 hover:bg-white/20 text-foreground flex items-center gap-2 font-bold uppercase tracking-widest text-[10px] transition-colors">
+                  <Upload className="w-3.5 h-3.5" />
+                  {isParsingFiles ? "Parsing..." : "Upload PDFs"}
+                </div>
+              </label>
+              <div className="flex items-center gap-2">
+                <FileKey className="w-4 h-4 text-purple-400" />
+                <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">{pdfsLoaded} PDFs loaded into memory</span>
               </div>
-            </label>
-            <div className="flex items-center gap-2">
-              <FileKey className="w-4 h-4 text-purple-400" />
-              <span className="text-[10px] uppercase tracking-widest font-bold text-muted-foreground">{pdfsLoaded} PDFs loaded into memory</span>
             </div>
-          </div>
+          </FileDropZone>
 
           <div className="flex items-center gap-4">
             <Button

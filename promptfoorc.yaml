@@ -1,0 +1,13 @@
+prompts:
+  - file://evals/abstract_screening.txt
+
+providers:
+  - google:gemini-1.5-pro
+  - google:gemini-1.5-flash
+
+tests: evals/test_cases.yaml
+
+defaultTest:
+  options:
+    transform:
+      - javascript: "output.replace(/^```json/, '').replace(/```$/, '').trim()"

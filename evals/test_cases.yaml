@@ -1,0 +1,38 @@
+- vars:
+    topic: "Impact of AI on clinical decision support in emergency medicine"
+    inclusionCriteria: "Peer-reviewed studies, published 2015-2025, involving human subjects in an Emergency Department setting."
+    exclusionCriteria: "Conference abstracts, systematic reviews, papers with fewer than 50 participants."
+    extraContext: "Focus on primary research studies only."
+    title: "AI-driven triage in the ED: A prospective cohort study"
+    author: "Smith et al."
+    year: "2023"
+    abstract: "This study evaluates a new AI model for triage in the emergency department. Participants: 500 patients. Design: Prospective cohort. Result: Improved accuracy in high-acuity cases."
+  assert:
+    - type: javascript
+      value: "JSON.parse(output).decision === 'INCLUDED'"
+
+- vars:
+    topic: "Impact of AI on clinical decision support in emergency medicine"
+    inclusionCriteria: "Peer-reviewed studies, published 2015-2025, involving human subjects in an Emergency Department setting."
+    exclusionCriteria: "Conference abstracts, systematic reviews, papers with fewer than 50 participants."
+    extraContext: "Focus on primary research studies only."
+    title: "Machine learning for ED prediction: A systematic review"
+    author: "Jones et al."
+    year: "2022"
+    abstract: "We performed a systematic review of machine learning models used for predicting hospital admission from the ED. We analyzed 45 previous studies."
+  assert:
+    - type: javascript
+      value: "JSON.parse(output).decision === 'EXCLUDED'"
+
+- vars:
+    topic: "Impact of AI on clinical decision support in emergency medicine"
+    inclusionCriteria: "Peer-reviewed studies, published 2015-2025, involving human subjects in an Emergency Department setting."
+    exclusionCriteria: "Conference abstracts, systematic reviews, papers with fewer than 50 participants."
+    extraContext: "Focus on primary research studies only."
+    title: "Small Pilot of AI Triage"
+    author: "Lee et al."
+    year: "2021"
+    abstract: "A pilot test with 12 participants in a simulate emergency environment. Results were promising."
+  assert:
+    - type: javascript
+      value: "JSON.parse(output).decision === 'EXCLUDED'"

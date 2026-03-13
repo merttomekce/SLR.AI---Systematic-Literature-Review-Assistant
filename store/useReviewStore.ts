@@ -340,7 +340,7 @@ export const useReviewStore = create<ReviewState>()(
           const state = get();
           const endpoint = state.customLocalEndpoint || 'http://127.0.0.1:11434/v1'; // fallback
           
-          set({ isFetchingModels: true, apiKey: '' });
+          set({ isFetchingModels: true, apiKey: endpoint });
           try {
             // Use our Next.js server-side proxy to completely bypass Browser CORS limits
             const url = `/api/local-models?endpoint=${encodeURIComponent(endpoint)}`;

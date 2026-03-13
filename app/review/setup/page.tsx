@@ -12,8 +12,10 @@ import { Upload, ChevronRight, FileText, FileSearch, Settings, Loader2, Info, Ch
 import { HoverCard, HoverCardContent, HoverCardTrigger } from '@/components/ui/hover-card';
 import { useRouter } from 'next/navigation';
 import { useReviewStore } from '@/store/useReviewStore';
+import { cn } from '@/lib/utils';
 import { parseExcelFile, parseTextReferences, extractTextFromPDF } from '@/lib/fileParser';
-import { extractResearchParameters } from '@/lib/llmClient';
+import { extractResearchParameters, extractResearchParametersRegex } from '@/lib/llmClient';
+import { Switch } from '@/components/ui/switch';
 import { toast } from 'sonner';
 
 const PROVIDER_NAMES: Record<string, string> = {
@@ -38,6 +40,14 @@ export default function SetupPage() {
   const [isParsing, setIsParsing] = useState(false);
   const [isExtractingParams, setIsExtractingParams] = useState(false);
   const [apaText, setApaText] = useState('');
+  const [useAiExtraction, setUseAiExtraction] = useState(false);
+  const isModelReady = !!model && availableModels.length > 0 && !availableModels[0].includes('Offline');
+
+  useEffect(() => {
+    if (!isModelReady) {
+      setUseAiExtraction(false);
+    }
+  }, [isModelReady]);
   // Auto-fetch local models once toggled
   useEffect(() => {
     if (isLocalMode) {
@@ -88,8 +98,8 @@ export default function SetupPage() {
     const file = e.currentTarget.files?.[0];
     if (!file) return;
 
-    if (!apiKey) {
-      toast.error('API Key Missing', { description: 'Please provide an API key first to use the extraction feature.' });
+    if (useAiExtraction && !apiKey) {
+      toast.error('API Key Missing', { description: 'Please provide an API key or connect a local model first for AI extraction.' });
       return;
     }
 
@@ -107,12 +117,18 @@ export default function SetupPage() {
         throw new Error("Could not extract any text from the PDF.");
       }
 
-      toast.info('Analyzing Requirements Document...');
-      const config = { provider, model, apiKey };
-      const extractedParams = await extractResearchParameters(text, config);
-
-      setResearchConfig(extractedParams);
-      toast.success('Research Parameters Extracted Successfully!');
+      if (useAiExtraction) {
+        toast.info('Analyzing Requirements Document with AI...');
+        const config = { provider, model, apiKey };
+        const extractedParams = await extractResearchParameters(text, config);
+        setResearchConfig(extractedParams);
+        toast.success('Research Parameters Extracted (AI Assisted)');
+      } else {
+        toast.info('Extracting Parameters via Regex...');
+        const extractedParams = extractResearchParametersRegex(text);
+        setResearchConfig(extractedParams);
+        toast.success('Research Parameters Extracted (Fast Regex)');
+      }
     } catch (err: any) {
       console.error('Extraction Error:', err);
       toast.error('Extraction Failed', { description: err.message || 'An unknown error occurred.' });
@@ -300,9 +316,22 @@ export default function SetupPage() {
 
               {/* PDF Protocol Extractor */}
               <div className="space-y-3">
-                <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Auto-Fill from Protocol</Label>
+                <div className="flex items-center justify-between">
+                  <Label className="text-[10px] uppercase tracking-widest text-muted-foreground">Auto-Fill from Protocol</Label>
+                  <div className="flex items-center gap-2">
+                    <span className={cn("text-[9px] font-bold uppercase tracking-widest", useAiExtraction ? "text-purple-400" : "text-muted-foreground/50")}>
+                      AI Assisted
+                    </span>
+                    <Switch 
+                      checked={useAiExtraction} 
+                      onCheckedChange={setUseAiExtraction}
+                      disabled={!isModelReady}
+                      className="scale-90"
+                    />
+                  </div>
+                </div>
                 <div className="relative group rounded-2xl p-[2px] overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/20 via-blue-500/20 to-purple-500/20 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-purple-500/10 via-blue-500/10 to-purple-500/10 opacity-50 group-hover:opacity-100 transition-opacity duration-500" />
                   <div className="relative h-full bg-card rounded-[14px] border border-dashed border-border group-hover:border-white/20 transition-colors p-6 text-center">
                     <label className="cursor-pointer block relative z-10 w-full h-full">
                       <input type="file" accept=".pdf" onChange={handleRequirementsUpload} className="hidden" disabled={isExtractingParams} />
@@ -310,7 +339,9 @@ export default function SetupPage() {
                         {isExtractingParams ? <Loader2 className="w-8 h-8 animate-spin text-purple-400" /> : <Upload className="w-8 h-8 text-muted-foreground group-hover:text-purple-400 transition-colors" />}
                         <div>
                           <p className="text-sm font-semibold text-foreground">{isExtractingParams ? 'Extracting protocol...' : 'Upload PDF Protocol Document'}</p>
-                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">Extracts Topic & Criteria via AI</p>
+                          <p className="text-[10px] text-muted-foreground uppercase tracking-widest mt-1">
+                            Using {useAiExtraction ? "AI Synthesis" : "Fast Regex Mode"}
+                          </p>
                         </div>
                       </div>
                     </label>
